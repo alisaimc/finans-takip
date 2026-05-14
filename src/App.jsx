@@ -10,6 +10,101 @@ import {
   Tooltip, ResponsiveContainer, Cell 
 } from 'recharts';
 
+// ==========================================
+// 🚀 API VE SUNUCU AYARLARI (POSTGRESQL İÇİN)
+// ==========================================
+const API_BASE_URL = "https://api.senindomainin.com"; // Kendi sunucu domaininiz
+const USE_REAL_API = false; // Kendi sunucunuzu kurduğunuzda bunu TRUE yapın. (Şu an test için false)
+
+// --- API SERVİS KATMANI (Frontend ile Backend arasındaki köprü) ---
+const api = {
+  // Eğer USE_REAL_API true ise fetch ile sunucuya gider, false ise LocalStorage kullanır (Canvas'ta çalışması için)
+  async request(endpoint, method = 'GET', body = null) {
+    if (USE_REAL_API) {
+      const headers = { 'Content-Type': 'application/json' };
+      const token = localStorage.getItem('app_token');
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : null
+      });
+      if (!res.ok) throw new Error("Sunucu hatası");
+      return res.json();
+    } else {
+      return this.mockDb(endpoint, method, body);
+    }
+  },
+
+  // GET İstekleri (Veri Çekme)
+  getTransactions: (userId) => api.request(`/transactions?userId=${userId}`),
+  getCategories: (userId) => api.request(`/categories?userId=${userId}`),
+  getUsers: () => api.request(`/users`),
+  getSettings: (userId) => api.request(`/settings?userId=${userId}`),
+
+  // POST/PUT/DELETE İstekleri (Veri Yazma)
+  saveTransaction: (data) => api.request('/transactions', 'POST', data),
+  deleteTransaction: (id) => api.request(`/transactions/${id}`, 'DELETE'),
+  saveCategory: (data) => api.request('/categories', 'POST', data),
+  deleteCategory: (id) => api.request(`/categories/${id}`, 'DELETE'),
+  saveUser: (data) => api.request('/users', 'POST', data),
+  deleteUser: (id) => api.request(`/users/${id}`, 'DELETE'),
+  saveSettings: (data) => api.request('/settings', 'POST', data),
+
+  // --- MOCK DB (Backend yokken Canvas'ta çalışması için sahte veritabanı) ---
+  async mockDb(endpoint, method, body) {
+    await new Promise(r => setTimeout(r, 300)); // Sunucu gecikmesi simülasyonu
+    
+    // Varsayılan Veriler
+    const defaultCats = [
+      { id: '1', name: 'KİRA', type: 'GİDER' }, { id: '2', name: 'AİDAT', type: 'GİDER' },
+      { id: '3', name: 'MAAŞ', type: 'GELİR' }, { id: '4', name: 'MARKET', type: 'GİDER' }
+    ];
+    const defaultUser = { id: 'admin_1', username: 'admin', password: '123', role: 'admin' };
+
+    // LocalStorage Tabloları
+    let txs = JSON.parse(localStorage.getItem('db_txs')) || [];
+    let cats = JSON.parse(localStorage.getItem('db_cats')) || defaultCats;
+    let users = JSON.parse(localStorage.getItem('db_users')) || [defaultUser];
+    let settings = JSON.parse(localStorage.getItem('db_settings')) || { city: { name: 'Bursa', lat: 40.1824, lon: 29.0669 }, weatherOverride: 'auto' };
+
+    if (method === 'GET') {
+      if (endpoint.includes('/transactions')) return txs;
+      if (endpoint.includes('/categories')) return cats;
+      if (endpoint.includes('/users')) return users;
+      if (endpoint.includes('/settings')) return settings;
+    }
+    
+    if (method === 'POST') {
+      if (endpoint === '/transactions') {
+        txs = txs.filter(t => t.id !== body.id); txs.push(body);
+        localStorage.setItem('db_txs', JSON.stringify(txs)); return body;
+      }
+      if (endpoint === '/categories') {
+        cats = cats.filter(c => c.id !== body.id); cats.push(body);
+        localStorage.setItem('db_cats', JSON.stringify(cats)); return body;
+      }
+      if (endpoint === '/users') {
+        users = users.filter(u => u.id !== body.id); users.push(body);
+        localStorage.setItem('db_users', JSON.stringify(users)); return body;
+      }
+      if (endpoint === '/settings') {
+        settings = body; localStorage.setItem('db_settings', JSON.stringify(settings)); return body;
+      }
+    }
+
+    if (method === 'DELETE') {
+      const id = endpoint.split('/').pop();
+      if (endpoint.includes('/transactions')) { txs = txs.filter(t => t.id !== id); localStorage.setItem('db_txs', JSON.stringify(txs)); }
+      if (endpoint.includes('/categories')) { cats = cats.filter(c => c.id !== id); localStorage.setItem('db_cats', JSON.stringify(cats)); }
+      if (endpoint.includes('/users')) { users = users.filter(u => u.id !== id); localStorage.setItem('db_users', JSON.stringify(users)); }
+      return { success: true };
+    }
+  }
+};
+
+
 // --- SABİTLER ---
 const MONTHS = [
   { value: '01', label: 'Ocak' }, { value: '02', label: 'Şubat' }, { value: '03', label: 'Mart' },
@@ -21,18 +116,6 @@ const MONTHS = [
 const currentYear = new Date().getFullYear();
 const YEARS = Array.from({ length: 5 }, (_, i) => String(currentYear - 3 + i));
 
-const DEFAULT_CATEGORIES = [
-  { id: '1', name: 'KİRA', type: 'GİDER' },
-  { id: '2', name: 'AİDAT', type: 'GİDER' },
-  { id: '3', name: 'YOL', type: 'GELİR' },
-  { id: '4', name: 'MAAŞ', type: 'GELİR' },
-  { id: '5', name: 'GARANTİ', type: 'GİDER' },
-  { id: '6', name: 'AKBANK', type: 'GİDER' },
-  { id: '7', name: 'NAKİT', type: 'GİDER' },
-  { id: '8', name: 'EK GELİR', type: 'GELİR' },
-  { id: '9', name: 'MARKET', type: 'GİDER' }
-];
-
 const CITIES = [
   { name: 'Bursa', lat: 40.1824, lon: 29.0669 },
   { name: 'İstanbul', lat: 41.0082, lon: 28.9784 },
@@ -43,7 +126,6 @@ const WeatherBackground = ({ city, override }) => {
   const [weatherData, setWeatherData] = useState({ type: 'clear', temp: null });
   const [particles, setParticles] = useState([]);
 
-  // API'den gerçek veriyi çek
   useEffect(() => {
     if (!city) return;
     fetch(`https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}&current_weather=true`)
@@ -52,22 +134,17 @@ const WeatherBackground = ({ city, override }) => {
         const code = data.current_weather.weathercode;
         const temp = data.current_weather.temperature;
         let type = 'clear';
-        
-        // WMO Hava Durumu Kodları Analizi
         if ([71, 73, 75, 77, 85, 86].includes(code)) type = 'snow';
         else if ([51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99].includes(code)) type = 'rain';
         else if ([1, 2, 3, 45, 48].includes(code)) type = 'clouds';
-        
         setWeatherData({ type, temp });
       })
       .catch(err => console.error("Hava durumu çekilemedi", err));
   }, [city]);
 
-  // Gösterilecek efekti belirle (Manuel seçilmişse onu kullan, yoksa API'yi kullan)
   const displayType = override === 'auto' ? weatherData.type : override;
   const temp = weatherData.temp;
 
-  // Efekt değiştiğinde parçacıkları yeniden oluştur
   useEffect(() => {
     const newParticles = Array.from({ length: displayType === 'rain' ? 80 : displayType === 'snow' ? 60 : 10 }).map((_, i) => ({
       id: i,
@@ -81,14 +158,12 @@ const WeatherBackground = ({ city, override }) => {
     setParticles(newParticles);
   }, [displayType]);
 
-  // Hava durumuna göre arkaplan renk geçişleri
   const bgGradients = {
     snow: 'linear-gradient(-45deg, #7dd3fc, #bae6fd, #e2e8f0, #7dd3fc)',
     rain: 'linear-gradient(-45deg, #64748b, #94a3b8, #cbd5e1, #64748b)',
     clouds: 'linear-gradient(-45deg, #cbd5e1, #e2e8f0, #f1f5f9, #cbd5e1)',
     clear: 'linear-gradient(-45deg, #f0fdfa, #fefce8, #fff1f2, #e0e7ff)'
   };
-
   const weatherIcons = { snow: '❄️', rain: '🌧️', clouds: '☁️', clear: '☀️' };
 
   return (
@@ -98,47 +173,23 @@ const WeatherBackground = ({ city, override }) => {
         @keyframes fall-down { to { transform: translateY(120vh); } }
         @keyframes drift { 0% { transform: translate(0, -10vh); } 50% { transform: translate(30px, 50vh); } 100% { transform: translate(-20px, 120vh); } }
         @keyframes float-cloud { 0% { transform: translateX(-5%) translateY(0); } 50% { transform: translateX(5%) translateY(20px); } 100% { transform: translateX(-5%) translateY(0); } }
-        
-        .bg-weather-animate { 
-          position: absolute; inset: 0;
-          background-size: 400% 400%; 
-          animation: dynamic-weather-bg 15s ease infinite; 
-          background-image: ${bgGradients[displayType]}; 
-          transition: background-image 2s ease; 
-        }
+        .bg-weather-animate { position: absolute; inset: 0; background-size: 400% 400%; animation: dynamic-weather-bg 15s ease infinite; background-image: ${bgGradients[displayType]}; transition: background-image 2s ease; }
       `}</style>
-      
       <div className="bg-weather-animate"></div>
-
-      {/* YAĞMUR EFEKTİ */}
-      {displayType === 'rain' && particles.map(p => (
-        <div key={p.id} className="absolute bg-slate-400 rounded-full" 
-             style={{ left: p.left, top: p.top, width: p.size + 'px', height: p.size * 12 + 'px', opacity: p.opacity, animation: `fall-down ${p.duration}s linear infinite`, animationDelay: `${p.delay}s` }} />
-      ))}
-
-      {/* KAR EFEKTİ */}
-      {displayType === 'snow' && particles.map(p => (
-        <div key={p.id} className="absolute bg-white rounded-full shadow-md" 
-             style={{ left: p.left, top: p.top, width: (p.size + 2) + 'px', height: (p.size + 2) + 'px', opacity: p.opacity + 0.4, animation: `drift ${p.duration}s linear infinite`, animationDelay: `${p.delay}s` }} />
-      ))}
-
-      {/* BULUT EFEKTİ */}
+      {displayType === 'rain' && particles.map(p => <div key={p.id} className="absolute bg-slate-400 rounded-full" style={{ left: p.left, top: p.top, width: p.size + 'px', height: p.size * 12 + 'px', opacity: p.opacity, animation: `fall-down ${p.duration}s linear infinite`, animationDelay: `${p.delay}s` }} />)}
+      {displayType === 'snow' && particles.map(p => <div key={p.id} className="absolute bg-white rounded-full shadow-md" style={{ left: p.left, top: p.top, width: (p.size + 2) + 'px', height: (p.size + 2) + 'px', opacity: p.opacity + 0.4, animation: `drift ${p.duration}s linear infinite`, animationDelay: `${p.delay}s` }} />)}
       {displayType === 'clouds' && (
         <>
           <div className="absolute top-10 left-10 w-96 h-40 bg-white/50 blur-3xl rounded-full" style={{ animation: 'float-cloud 20s ease-in-out infinite' }}></div>
           <div className="absolute top-40 right-20 w-[30rem] h-60 bg-white/40 blur-3xl rounded-full" style={{ animation: 'float-cloud 25s ease-in-out infinite reverse' }}></div>
         </>
       )}
-
-      {/* AÇIK HAVA/GÜNEŞ EFEKTİ */}
       {displayType === 'clear' && (
         <>
           <div className="absolute -top-20 -right-20 w-96 h-96 bg-amber-200/30 blur-3xl rounded-full" style={{ animation: 'float-cloud 15s ease-in-out infinite' }}></div>
           <div className="absolute bottom-10 left-10 w-64 h-64 bg-orange-200/20 blur-3xl rounded-full" style={{ animation: 'float-cloud 18s ease-in-out infinite reverse' }}></div>
         </>
       )}
-
-      {/* HAVA DURUMU BİLGİ KUTUSU */}
       {temp !== null && (
         <div className="fixed bottom-6 right-6 z-50 bg-white/70 backdrop-blur-md border border-white/60 px-4 py-2 rounded-2xl shadow-xl flex items-center gap-3 pointer-events-auto transition-transform hover:scale-105">
           <div className="flex flex-col">
@@ -163,39 +214,25 @@ const InteractiveDateClock = () => {
   const hours = String(time.getHours()).padStart(2, '0');
   const minutes = String(time.getMinutes()).padStart(2, '0');
   const seconds = String(time.getSeconds()).padStart(2, '0');
-  
   const dayNum = time.getDate();
-  
   const months = ["OCAK", "ŞUBAT", "MART", "NİSAN", "MAYIS", "HAZİRAN", "TEMMUZ", "AĞUSTOS", "EYLÜL", "EKİM", "KASIM", "ARALIK"];
   const days = ["PAZAR", "PAZARTESİ", "SALI", "ÇARŞAMBA", "PERŞEMBE", "CUMA", "CUMARTESİ"];
   
-  const monthStr = months[time.getMonth()];
-  const dayStr = days[time.getDay()];
-
   return (
     <div className="group relative w-12 h-12 cursor-pointer select-none z-50">
-      {/* Fare hover alanını genişletmek için görünmez katman (Animasyon bozulmasın diye) */}
       <div className="absolute top-0 left-0 w-[350%] h-[150%] hidden group-hover:block z-50 pointer-events-auto"></div>
-      
-      {/* Kırmızı Kutu - Saat (Solda kalır) */}
       <div className="absolute inset-0 bg-[#ef4444] rounded-xl flex items-center justify-center text-white text-xl font-black transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] transform -rotate-6 group-hover:rotate-0 shadow-md z-0 pointer-events-none">
         <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-100">{hours}</span>
       </div>
-
-      {/* Sarı Kutu - Saniye (En sağa açılır) */}
       <div className="absolute inset-0 bg-[#fbbf24] rounded-xl flex items-center justify-center text-white text-xl font-black transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] transform rotate-6 group-hover:rotate-0 group-hover:translate-x-[220%] shadow-md z-10 pointer-events-none">
         <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-100">{seconds}</span>
       </div>
-
-      {/* Mavi Kutu - Dakika / Tarih (Ortaya açılır) */}
       <div className="absolute inset-0 bg-[#3b82f6] rounded-xl shadow-lg z-20 flex items-center justify-center overflow-hidden transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:translate-x-[110%] pointer-events-none">
-        {/* Tarih Görünümü (Varsayılan) */}
         <div className="absolute inset-0 flex flex-col items-center justify-center transition-opacity duration-300 group-hover:opacity-0 opacity-100">
-          <span className="text-[0.45rem] font-bold text-white/90 tracking-wider mt-0.5">{monthStr}</span>
+          <span className="text-[0.45rem] font-bold text-white/90 tracking-wider mt-0.5">{months[time.getMonth()]}</span>
           <span className="text-xl font-black text-white leading-none my-0.5">{dayNum}</span>
-          <span className="text-[0.4rem] font-bold text-white/90 tracking-wider mb-0.5 truncate max-w-[90%]">{dayStr}</span>
+          <span className="text-[0.4rem] font-bold text-white/90 tracking-wider mb-0.5 truncate max-w-[90%]">{days[time.getDay()]}</span>
         </div>
-        {/* Dakika Görünümü (Hover Edilince) */}
         <div className="absolute inset-0 flex items-center justify-center transition-opacity duration-300 opacity-0 group-hover:opacity-100">
           <span className="text-xl font-black text-white">{minutes}</span>
         </div>
@@ -205,11 +242,11 @@ const InteractiveDateClock = () => {
 };
 
 export default function App() {
-  // --- STATE ---
-  const [appUsers, setAppUsers] = useState([]); // [{ id, username, password, role }]
-  const [currentUser, setCurrentUser] = useState(null); // { id, username, role }
-  const [systemCity, setSystemCity] = useState(CITIES.find(c => c.name === 'Bursa')); // Varsayılan Bursa
-  const [weatherOverride, setWeatherOverride] = useState('auto'); // auto, clear, rain, clouds, snow
+  const [isLoading, setIsLoading] = useState(true);
+  const [appUsers, setAppUsers] = useState([]); 
+  const [currentUser, setCurrentUser] = useState(null);
+  const [systemCity, setSystemCity] = useState(CITIES[0]);
+  const [weatherOverride, setWeatherOverride] = useState('auto');
   
   const [transactions, setTransactions] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -218,106 +255,68 @@ export default function App() {
   const [selectedMonth, setSelectedMonth] = useState(String(new Date().getMonth() + 1).padStart(2, '0'));
   const [selectedYear, setSelectedYear] = useState(String(currentYear));
   
-  // Form States
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formData, setFormData] = useState({ id: null, type: 'GİDER', categoryId: '', categoryName: '', date: '', amount: '', description: '' });
   const [categoryForm, setCategoryForm] = useState({ id: null, name: '', type: 'GİDER' });
 
-  // Auth States
   const [showPassword, setShowPassword] = useState(false);
-  
-  // Profile & Admin States
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [profileForm, setProfileForm] = useState({ currentPass: '', newPass: '' });
   const [newUserForm, setNewUserForm] = useState({ username: '', password: '', role: 'user' });
 
-  // Dialog State
   const [dialog, setDialog] = useState({ isOpen: false, type: 'alert', message: '', onConfirm: null });
 
   const showAlert = (message) => setDialog({ isOpen: true, type: 'alert', message, onConfirm: null });
   const showConfirm = (message, onConfirmAction) => setDialog({ isOpen: true, type: 'confirm', message, onConfirm: onConfirmAction });
   const closeDialog = () => setDialog({ isOpen: false, type: 'alert', message: '', onConfirm: null });
 
-  // --- İLK YÜKLEME VE VERİ ÇEKME (MIGRATION DAHİL) ---
+  // --- İLK YÜKLEME (Backend'den Verileri Çek) ---
   useEffect(() => {
-    // Ortak Şehir Ayarını Yükle (Admin değiştirmiş olabilir)
-    const savedCity = localStorage.getItem('app_system_city');
-    if (savedCity) {
-      const foundCity = CITIES.find(c => c.name === savedCity);
-      if (foundCity) setSystemCity(foundCity);
-    }
+    const fetchInitialData = async () => {
+      try {
+        const usersData = await api.getUsers();
+        setAppUsers(usersData);
 
-    const savedOverride = localStorage.getItem('app_weather_override');
-    if (savedOverride) {
-      setWeatherOverride(savedOverride);
-    }
-
-    // Eski basit users listesini yeni şifreli sisteme geçir (Veri kaybı olmaması için)
-    let savedUsers = JSON.parse(localStorage.getItem('app_users_v2'));
-    if (!savedUsers) {
-      const oldUsers = JSON.parse(localStorage.getItem('users'));
-      if (oldUsers && oldUsers.length > 0) {
-        // Eski kullanıcıları varsayılan '123' şifresiyle sisteme aktar, ilk kişiyi admin yap
-        savedUsers = oldUsers.map((u, i) => ({ 
-          id: `mig_${i}`, username: u, password: '123', role: i === 0 ? 'admin' : 'user' 
-        }));
-      } else {
-        // Hiç kullanıcı yoksa varsayılan admin oluştur
-        savedUsers = [{ id: 'admin_1', username: 'admin', password: '123', role: 'admin' }];
+        const sessionUser = JSON.parse(localStorage.getItem('app_session'));
+        if (sessionUser) {
+          const freshUser = usersData.find(u => u.id === sessionUser.id);
+          if (freshUser) {
+            setCurrentUser({ id: freshUser.id, username: freshUser.username, role: freshUser.role });
+            await loadUserData(freshUser.id);
+          } else {
+            localStorage.removeItem('app_session');
+          }
+        }
+      } catch (err) {
+        console.error("Veri yükleme hatası", err);
+      } finally {
+        setIsLoading(false);
       }
-      localStorage.setItem('app_users_v2', JSON.stringify(savedUsers));
-    }
-    setAppUsers(savedUsers);
-    
-    // Oturum Kontrolü
-    const loggedInUser = JSON.parse(localStorage.getItem('app_currentUser_v2'));
-    if (loggedInUser) {
-      // Sadece güvenli bilgileri state'e al (şifre hariç)
-      const freshUserData = savedUsers.find(u => u.id === loggedInUser.id);
-      if (freshUserData) {
-        setCurrentUser({ id: freshUserData.id, username: freshUserData.username, role: freshUserData.role });
-      } else {
-        localStorage.removeItem('app_currentUser_v2');
-      }
-    } else {
-      // Eski currentUser varsa onu da yeni sisteme geçir
-      const oldCurr = localStorage.getItem('currentUser');
-      if (oldCurr) {
-         const found = savedUsers.find(u => u.username === oldCurr);
-         if (found) {
-           const sessionUser = { id: found.id, username: found.username, role: found.role };
-           setCurrentUser(sessionUser);
-           localStorage.setItem('app_currentUser_v2', JSON.stringify(sessionUser));
-         }
-      }
-    }
+    };
+    fetchInitialData();
   }, []);
 
+  const loadUserData = async (userId) => {
+    try {
+      const [txs, cats, sets] = await Promise.all([
+        api.getTransactions(userId),
+        api.getCategories(userId),
+        api.getSettings(userId)
+      ]);
+      setTransactions(txs || []);
+      setCategories(cats || []);
+      if (sets) {
+        if (sets.city) setSystemCity(sets.city);
+        if (sets.weatherOverride) setWeatherOverride(sets.weatherOverride);
+      }
+    } catch(err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
-    if (currentUser) {
-      // Verileri ortak (shared) bir alanda tutalım ki tüm kullanıcılar aynı veriyi görebilsin.
-      let savedTrans = JSON.parse(localStorage.getItem('transactions_shared'));
-      // Eğer ortak veri henüz yoksa, mevcut kullanıcının (muhtemelen admin) eski verisini globale taşı (Veri kaybı önlemi)
-      if (!savedTrans) {
-        savedTrans = JSON.parse(localStorage.getItem(`transactions_${currentUser.username}`)) || [];
-        localStorage.setItem('transactions_shared', JSON.stringify(savedTrans));
-      }
-      setTransactions(savedTrans);
-      
-      let savedCats = JSON.parse(localStorage.getItem('categories_shared'));
-      if (!savedCats || savedCats.length === 0) {
-        savedCats = JSON.parse(localStorage.getItem(`categories_${currentUser.username}`));
-        if (!savedCats || savedCats.length === 0) {
-          savedCats = DEFAULT_CATEGORIES;
-        }
-        localStorage.setItem('categories_shared', JSON.stringify(savedCats));
-      }
-      setCategories(savedCats);
-      
-      // Admin tabına geçerken yetki kontrolü
-      if (['admin', 'settings'].includes(activeTab) && currentUser.role !== 'admin') {
-        setActiveTab('dashboard');
-      }
+    if (currentUser && ['admin', 'settings'].includes(activeTab) && currentUser.role !== 'admin') {
+      setActiveTab('dashboard');
     }
   }, [currentUser, activeTab]);
 
@@ -345,17 +344,14 @@ export default function App() {
         const [tYear, tMonth] = t.date.split('-');
         return parseInt(tYear) === year && parseInt(tMonth) === monthNum;
       });
-
       const income = mTrans.filter(t => t.type === 'GELİR').reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
       const expense = mTrans.filter(t => t.type === 'GİDER').reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
       return { name: m.label, Gelir: income, Gider: expense, Net: income - expense };
     });
   }, [transactions, selectedYear]);
 
-  // --- KOPYALAMA ---
   const { prevMonthStr, prevYearStr } = useMemo(() => {
-    let m = parseInt(selectedMonth) - 1;
-    let y = parseInt(selectedYear);
+    let m = parseInt(selectedMonth) - 1; let y = parseInt(selectedYear);
     if (m < 1) { m = 12; y -= 1; }
     return { prevMonthStr: String(m).padStart(2, '0'), prevYearStr: String(y) };
   }, [selectedMonth, selectedYear]);
@@ -372,29 +368,31 @@ export default function App() {
 
   const handleCopyFromPreviousMonth = () => {
     const currentMonthLabel = MONTHS.find(m => m.value === selectedMonth)?.label;
-    showConfirm(`Önceki aya ait ${previousMonthTransactions.length} adet kayıt bu aya (${currentMonthLabel} ${selectedYear}) aktarılacak. Onaylıyor musunuz?`, () => {
-      const newTransactions = previousMonthTransactions.map((t, index) => {
+    showConfirm(`Önceki aya ait ${previousMonthTransactions.length} adet kayıt bu aya aktarılacak. Onaylıyor musunuz?`, async () => {
+      const newTransactions = [];
+      for (let t of previousMonthTransactions) {
         const parts = t.date.split('-');
         let dayStr = parts[2] || "01";
-        const maxDaysInTargetMonth = new Date(parseInt(selectedYear), parseInt(selectedMonth), 0).getDate();
-        const adjustedDay = Math.min(parseInt(dayStr, 10), maxDaysInTargetMonth);
-        return {
+        const maxDays = new Date(parseInt(selectedYear), parseInt(selectedMonth), 0).getDate();
+        const adjustedDay = Math.min(parseInt(dayStr, 10), maxDays);
+        
+        const newTx = {
           ...t,
-          id: `copied-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 9)}`,
-          date: `${selectedYear}-${selectedMonth}-${String(adjustedDay).padStart(2, '0')}`
+          id: `copied-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+          date: `${selectedYear}-${selectedMonth}-${String(adjustedDay).padStart(2, '0')}`,
+          userId: currentUser.id
         };
-      });
-
-      const updatedTransactions = [...transactions, ...newTransactions];
-      setTransactions(updatedTransactions);
-      localStorage.setItem('transactions_shared', JSON.stringify(updatedTransactions));
+        await api.saveTransaction(newTx);
+        newTransactions.push(newTx);
+      }
+      setTransactions([...transactions, ...newTransactions]);
       closeDialog();
       setTimeout(() => showAlert(`${newTransactions.length} kayıt başarıyla eklendi!`), 200);
     });
   };
 
   // --- İŞLEMLER ---
-  const handleTransactionSubmit = (e) => {
+  const handleTransactionSubmit = async (e) => {
     e.preventDefault();
     if (!formData.categoryId) return showAlert("Lütfen bir kategori seçiniz!");
 
@@ -408,23 +406,27 @@ export default function App() {
       ...formData,
       id: formData.id || Date.now().toString() + Math.random().toString(36).substring(2, 9),
       categoryName: selectedCat ? selectedCat.name : formData.categoryId,
+      userId: currentUser.id
     };
 
-    let updatedList = formData.id 
-      ? transactions.map(t => t.id === formData.id ? newTransaction : t) 
-      : [...transactions, newTransaction];
-
-    setTransactions(updatedList);
-    localStorage.setItem('transactions_shared', JSON.stringify(updatedList));
-    closeForm();
+    try {
+      await api.saveTransaction(newTransaction);
+      setTransactions(prev => formData.id ? prev.map(t => t.id === formData.id ? newTransaction : t) : [...prev, newTransaction]);
+      closeForm();
+    } catch (err) {
+      showAlert("Kayıt eklenirken bir hata oluştu.");
+    }
   };
 
   const handleDeleteTransaction = (id) => {
-    showConfirm('Bu kaydı silmek istediğinize emin misiniz?', () => {
-      const updatedList = transactions.filter(t => t.id !== id);
-      setTransactions(updatedList);
-      localStorage.setItem('transactions_shared', JSON.stringify(updatedList));
-      closeDialog();
+    showConfirm('Bu kaydı silmek istediğinize emin misiniz?', async () => {
+      try {
+        await api.deleteTransaction(id);
+        setTransactions(prev => prev.filter(t => t.id !== id));
+        closeDialog();
+      } catch (err) {
+        console.error(err);
+      }
     });
   };
 
@@ -435,43 +437,50 @@ export default function App() {
   const closeForm = () => setIsFormOpen(false);
 
   // --- KATEGORİ ---
-  const handleCategorySubmit = (e) => {
+  const handleCategorySubmit = async (e) => {
     e.preventDefault();
     if (!categoryForm.name.trim()) return;
-    let updatedCats = categoryForm.id 
-      ? categories.map(c => c.id === categoryForm.id ? { ...categoryForm } : c)
-      : [...categories, { ...categoryForm, id: Date.now().toString(), name: categoryForm.name.toUpperCase() }];
     
-    setCategories(updatedCats);
-    localStorage.setItem('categories_shared', JSON.stringify(updatedCats));
-    setCategoryForm({ id: null, name: '', type: 'GİDER' });
+    const newCategory = { 
+      ...categoryForm, 
+      id: categoryForm.id || Date.now().toString(), 
+      name: categoryForm.name.toUpperCase(),
+      userId: currentUser.id 
+    };
+    
+    try {
+      await api.saveCategory(newCategory);
+      setCategories(prev => categoryForm.id ? prev.map(c => c.id === categoryForm.id ? newCategory : c) : [...prev, newCategory]);
+      setCategoryForm({ id: null, name: '', type: 'GİDER' });
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const handleDeleteCategory = (id) => {
-    showConfirm('Bu kategoriyi silmek istediğinize emin misiniz?', () => {
-      const updatedCats = categories.filter(c => c.id !== id);
-      setCategories(updatedCats);
-      localStorage.setItem('categories_shared', JSON.stringify(updatedCats));
-      closeDialog();
+    showConfirm('Bu kategoriyi silmek istediğinize emin misiniz?', async () => {
+      try {
+        await api.deleteCategory(id);
+        setCategories(prev => prev.filter(c => c.id !== id));
+        closeDialog();
+      } catch (err) {
+        console.error(err);
+      }
     });
   };
 
-  const handleEditCategory = (category) => {
-    setCategoryForm({ id: category.id, name: category.name, type: category.type });
-  }
-
   // --- AUTH VE KULLANICI ---
-  const handleAuth = (e) => {
+  const handleAuth = async (e) => {
     e.preventDefault();
     const username = e.target.username.value.trim().toLowerCase();
     const password = e.target.password.value;
 
-    // GİRİŞ YAP
     const user = appUsers.find(u => u.username === username && u.password === password);
     if (user) {
       const sessionUser = { id: user.id, username: user.username, role: user.role };
       setCurrentUser(sessionUser);
-      localStorage.setItem('app_currentUser_v2', JSON.stringify(sessionUser));
+      localStorage.setItem('app_session', JSON.stringify(sessionUser));
+      await loadUserData(user.id);
     } else {
       showAlert("Kullanıcı adı veya şifre hatalı!");
     }
@@ -479,91 +488,87 @@ export default function App() {
 
   const handleLogout = () => {
     setCurrentUser(null);
-    localStorage.removeItem('app_currentUser_v2');
+    localStorage.removeItem('app_session');
     setTransactions([]);
     setCategories([]);
     setActiveTab('dashboard');
   };
 
-  const handleProfileUpdate = (e) => {
+  const handleProfileUpdate = async (e) => {
     e.preventDefault();
     const targetUser = appUsers.find(u => u.id === currentUser.id);
-    if (targetUser.password !== profileForm.currentPass) {
-      return showAlert("Mevcut şifrenizi yanlış girdiniz!");
+    if (targetUser.password !== profileForm.currentPass) return showAlert("Mevcut şifrenizi yanlış girdiniz!");
+    
+    try {
+      const updatedUser = { ...targetUser, password: profileForm.newPass };
+      await api.saveUser(updatedUser);
+      setAppUsers(prev => prev.map(u => u.id === currentUser.id ? updatedUser : u));
+      setProfileForm({ currentPass: '', newPass: '' });
+      setIsProfileOpen(false);
+      showAlert("Şifreniz başarıyla güncellendi!");
+    } catch (err) {
+      console.error(err);
     }
-    
-    const updatedUsers = appUsers.map(u => 
-      u.id === currentUser.id ? { ...u, password: profileForm.newPass } : u
-    );
-    setAppUsers(updatedUsers);
-    localStorage.setItem('app_users_v2', JSON.stringify(updatedUsers));
-    
-    setProfileForm({ currentPass: '', newPass: '' });
-    setIsProfileOpen(false);
-    showAlert("Şifreniz başarıyla güncellendi!");
   };
 
   // --- ADMIN FONKSİYONLARI ---
-  const handleAdminAddUser = (e) => {
+  const handleAdminAddUser = async (e) => {
     e.preventDefault();
     const username = newUserForm.username.trim().toLowerCase();
-    
-    if (appUsers.find(u => u.username === username)) {
-      return showAlert("Bu kullanıcı adı zaten sistemde mevcut!");
-    }
-    
-    if (!username || !newUserForm.password) {
-      return showAlert("Lütfen kullanıcı adı ve şifre giriniz.");
-    }
+    if (appUsers.find(u => u.username === username)) return showAlert("Bu kullanıcı adı zaten sistemde mevcut!");
+    if (!username || !newUserForm.password) return showAlert("Lütfen kullanıcı adı ve şifre giriniz.");
 
-    const newUser = { 
-      id: Date.now().toString() + Math.random().toString(36).substring(2, 9), 
-      username, 
-      password: newUserForm.password, 
-      role: newUserForm.role 
-    };
-    
-    const updatedUsers = [...appUsers, newUser];
-    setAppUsers(updatedUsers);
-    localStorage.setItem('app_users_v2', JSON.stringify(updatedUsers));
-    
-    setNewUserForm({ username: '', password: '', role: 'user' });
-    showAlert(`${username} kullanıcısı başarıyla eklendi!`);
+    const newUser = { id: Date.now().toString() + Math.random().toString(36).substring(2, 9), username, password: newUserForm.password, role: newUserForm.role };
+    try {
+      await api.saveUser(newUser);
+      setAppUsers([...appUsers, newUser]);
+      setNewUserForm({ username: '', password: '', role: 'user' });
+      showAlert(`${username} kullanıcısı başarıyla eklendi!`);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const handleAdminPasswordChange = (userId, newPassword) => {
-    const updatedUsers = appUsers.map(u => u.id === userId ? { ...u, password: newPassword } : u);
-    setAppUsers(updatedUsers);
-    localStorage.setItem('app_users_v2', JSON.stringify(updatedUsers));
-    showAlert("Kullanıcı şifresi güncellendi.");
+  const handleAdminPasswordChange = async (userId, newPassword) => {
+    const targetUser = appUsers.find(u => u.id === userId);
+    if (!targetUser) return;
+    try {
+      const updatedUser = { ...targetUser, password: newPassword };
+      await api.saveUser(updatedUser);
+      setAppUsers(prev => prev.map(u => u.id === userId ? updatedUser : u));
+      showAlert("Kullanıcı şifresi güncellendi.");
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const handleAdminDeleteUser = (userId) => {
     if (userId === currentUser.id) return showAlert("Kendi hesabınızı silemezsiniz!");
-    showConfirm("Bu kullanıcıyı tamamen silmek istediğinize emin misiniz?", () => {
-      const updatedUsers = appUsers.filter(u => u.id !== userId);
-      setAppUsers(updatedUsers);
-      localStorage.setItem('app_users_v2', JSON.stringify(updatedUsers));
-      closeDialog();
+    showConfirm("Bu kullanıcıyı tamamen silmek istediğinize emin misiniz?", async () => {
+      try {
+        await api.deleteUser(userId);
+        setAppUsers(prev => prev.filter(u => u.id !== userId));
+        closeDialog();
+      } catch (err) {
+        console.error(err);
+      }
     });
   };
 
-  const handleCityChange = (e) => {
-    const selectedCityName = e.target.value;
-    const cityObj = CITIES.find(c => c.name === selectedCityName);
+  const handleCityChange = async (e) => {
+    const cityObj = CITIES.find(c => c.name === e.target.value);
     if (cityObj) {
       setSystemCity(cityObj);
-      localStorage.setItem('app_system_city', cityObj.name);
-      showAlert(`Sistem şehri ${cityObj.name} olarak güncellendi. Sıcaklık verisi anında uyarlanacaktır.`);
+      await api.saveSettings({ city: cityObj, weatherOverride, userId: currentUser.id });
+      showAlert(`Sistem şehri ${cityObj.name} olarak güncellendi.`);
     }
   };
 
-  const handleWeatherOverrideChange = (e) => {
+  const handleWeatherOverrideChange = async (e) => {
     const mode = e.target.value;
     setWeatherOverride(mode);
-    localStorage.setItem('app_weather_override', mode);
-    const modeNames = { auto: 'Otomatik (Şehre Göre)', clear: 'Güneşli / Açık', rain: 'Yağmurlu', clouds: 'Bulutlu', snow: 'Karlı' };
-    showAlert(`Hava durumu efekti "${modeNames[mode]}" olarak güncellendi.`);
+    await api.saveSettings({ city: systemCity, weatherOverride: mode, userId: currentUser.id });
+    showAlert(`Hava durumu efekti güncellendi.`);
   };
 
   // --- HELPERS ---
@@ -573,103 +578,63 @@ export default function App() {
   const currentTypeCategories = categories.filter(c => c.type === formData.type);
 
   const handleExportExcel = () => {
-    // Başlıklar
     const headers = ["Tür", "Kategori", "Tarih", "Tutar (TL)", "Açıklama"];
-    
-    // Satırlar
     const rows = currentMonthTransactions.map(t => [
-      t.type,
-      t.categoryName || t.categoryId,
-      t.date.split('-').reverse().join('.'),
-      t.amount.toString().replace('.', ','), // Excel'in ondalıkları doğru okuması için virgül yapıyoruz
-      (t.description || '').replace(/;/g, ' ').replace(/\n/g, ' ') // Noktalı virgül ve alt satırları temizliyoruz
+      t.type, t.categoryName || t.categoryId, t.date.split('-').reverse().join('.'),
+      t.amount.toString().replace('.', ','), (t.description || '').replace(/;/g, ' ').replace(/\n/g, ' ')
     ]);
-
-    // CSV formatında birleştirme (Noktalı virgül ile ayırıyoruz)
-    const csvContent = [
-      headers.join(";"),
-      ...rows.map(r => r.join(";"))
-    ].join("\n");
-
-    // Excel'in Türkçe (UTF-8) karakterleri düzgün tanıması için BOM ekliyoruz
+    const csvContent = [headers.join(";"), ...rows.map(r => r.join(";"))].join("\n");
     const bom = "\uFEFF";
     const blob = new Blob([bom + csvContent], { type: "text/csv;charset=utf-8;" });
-    
-    // İndirme işlemini tetikle
     const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", `Finans_Kayitlar_${MONTHS.find(m => m.value === selectedMonth)?.label}_${selectedYear}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    link.href = URL.createObjectURL(blob);
+    link.download = `Finans_Kayitlar_${MONTHS.find(m => m.value === selectedMonth)?.label}_${selectedYear}.csv`;
+    document.body.appendChild(link); link.click(); document.body.removeChild(link);
   };
 
   // --- EKRANLAR ---
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white p-8 rounded-3xl shadow-lg border border-slate-200 flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+          <p className="text-slate-600 font-bold animate-pulse">Sunucuya bağlanılıyor...</p>
+        </div>
+      </div>
+    );
+  }
 
-  // GİRİŞ EKRANI
   if (!currentUser) {
     return (
       <div className="min-h-screen relative flex items-center justify-center p-4">
         <WeatherBackground city={systemCity} override={weatherOverride} />
-        
         <div className="bg-white/95 p-8 sm:p-10 rounded-3xl shadow-2xl w-full max-w-md border border-white/50 backdrop-blur-xl relative overflow-hidden z-10">
           <div className="absolute -right-20 -top-20 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
-          
-          <div className="flex items-center justify-center w-20 h-20 bg-gradient-to-br from-indigo-100 to-violet-100 text-indigo-600 rounded-2xl mx-auto mb-6 shadow-inner transform -rotate-6">
-            <Wallet size={40} className="rotate-6" />
-          </div>
-          
+          <div className="flex items-center justify-center w-20 h-20 bg-gradient-to-br from-indigo-100 to-violet-100 text-indigo-600 rounded-2xl mx-auto mb-6 shadow-inner transform -rotate-6"><Wallet size={40} className="rotate-6" /></div>
           <h1 className="text-3xl font-black text-center text-slate-800 mb-2 tracking-tight">Finans Takip</h1>
-          <p className="text-center text-slate-500 mb-8 font-medium">
-            Hesabınıza giriş yapın
-          </p>
-          
+          <p className="text-center text-slate-500 mb-8 font-medium">Hesabınıza giriş yapın</p>
           <form onSubmit={handleAuth} className="space-y-5">
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-1.5 ml-1">Kullanıcı Adı</label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
-                  <User size={18} />
-                </div>
-                <input 
-                  type="text" name="username" required
-                  className="w-full pl-11 pr-4 py-3.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium text-slate-700"
-                  placeholder="Kullanıcı adınız"
-                />
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400"><User size={18} /></div>
+                <input type="text" name="username" required className="w-full pl-11 pr-4 py-3.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium text-slate-700" placeholder="Kullanıcı adınız" />
               </div>
             </div>
-
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-1.5 ml-1">Şifre</label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
-                  <Lock size={18} />
-                </div>
-                <input 
-                  type={showPassword ? "text" : "password"} name="password" required
-                  className="w-full pl-11 pr-12 py-3.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium text-slate-700"
-                  placeholder="Şifreniz"
-                />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-indigo-600 transition-colors">
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400"><Lock size={18} /></div>
+                <input type={showPassword ? "text" : "password"} name="password" required className="w-full pl-11 pr-12 py-3.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium text-slate-700" placeholder="Şifreniz" />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-indigo-600 transition-colors">{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
               </div>
             </div>
-
             <div className="flex justify-end">
-              <button type="button" onClick={() => showAlert("Şifrenizi unuttuysanız veya yeni bir hesap istiyorsanız, lütfen sistem yöneticisi (Admin) ile iletişime geçin.")} className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">
-                Yardım / Şifremi Unuttum
-              </button>
+              <button type="button" onClick={() => showAlert("Şifrenizi unuttuysanız veya yeni bir hesap istiyorsanız, lütfen sistem yöneticisi (Admin) ile iletişime geçin.")} className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">Yardım / Şifremi Unuttum</button>
             </div>
-
-            <button type="submit" className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white py-3.5 rounded-xl font-bold hover:shadow-lg hover:shadow-indigo-200 transition-all transform hover:-translate-y-0.5">
-              Giriş Yap
-            </button>
+            <button type="submit" className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white py-3.5 rounded-xl font-bold hover:shadow-lg hover:shadow-indigo-200 transition-all transform hover:-translate-y-0.5">Giriş Yap</button>
           </form>
         </div>
-        
-        {/* CUSTOM DIALOG */}
         {dialog.isOpen && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden p-6 text-center">
@@ -682,7 +647,6 @@ export default function App() {
     );
   }
 
-  // ANA UYGULAMA EKRANI
   return (
     <div className="min-h-screen relative text-slate-800 font-sans pb-20">
       <WeatherBackground city={systemCity} override={weatherOverride} />
@@ -694,50 +658,26 @@ export default function App() {
             <InteractiveDateClock />
             <span className="font-bold text-xl hidden md:block">Finans Takip</span>
           </div>
-
           <div className="flex flex-1 justify-center mx-4 overflow-x-auto hide-scrollbar">
             <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
-              <button onClick={() => setActiveTab('dashboard')} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold transition-colors whitespace-nowrap ${activeTab === 'dashboard' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-                <LayoutDashboard size={18} /> <span className="hidden sm:block">Dashboard</span>
-              </button>
-              <button onClick={() => setActiveTab('list')} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold transition-colors whitespace-nowrap ${activeTab === 'list' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-                <ListOrdered size={18} /> <span className="hidden sm:block">Kayıtlar</span>
-              </button>
-              {currentUser.role === 'admin' && (
-                <button onClick={() => setActiveTab('settings')} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold transition-colors whitespace-nowrap ${activeTab === 'settings' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-                  <Settings size={18} /> <span className="hidden sm:block">Ayarlar</span>
-                </button>
-              )}
-              {currentUser.role === 'admin' && (
-                <button onClick={() => setActiveTab('admin')} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold transition-colors whitespace-nowrap ${activeTab === 'admin' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-                  <Shield size={18} /> <span className="hidden sm:block">Admin</span>
-                </button>
-              )}
+              <button onClick={() => setActiveTab('dashboard')} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold transition-colors whitespace-nowrap ${activeTab === 'dashboard' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}><LayoutDashboard size={18} /> <span className="hidden sm:block">Dashboard</span></button>
+              <button onClick={() => setActiveTab('list')} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold transition-colors whitespace-nowrap ${activeTab === 'list' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}><ListOrdered size={18} /> <span className="hidden sm:block">Kayıtlar</span></button>
+              {currentUser.role === 'admin' && <button onClick={() => setActiveTab('settings')} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold transition-colors whitespace-nowrap ${activeTab === 'settings' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}><Settings size={18} /> <span className="hidden sm:block">Ayarlar</span></button>}
+              {currentUser.role === 'admin' && <button onClick={() => setActiveTab('admin')} className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-bold transition-colors whitespace-nowrap ${activeTab === 'admin' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}><Shield size={18} /> <span className="hidden sm:block">Admin</span></button>}
             </div>
           </div>
-
           <div className="flex items-center gap-3">
-            <button 
-              onClick={() => setIsProfileOpen(true)}
-              className="flex items-center gap-2 hover:bg-slate-50 p-1.5 rounded-xl transition-colors border border-transparent hover:border-slate-200"
-              title="Profilim"
-            >
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-violet-500 text-white flex items-center justify-center font-bold text-sm shadow-md">
-                {currentUser.username.substring(0,2).toUpperCase()}
-              </div>
+            <button onClick={() => setIsProfileOpen(true)} className="flex items-center gap-2 hover:bg-slate-50 p-1.5 rounded-xl transition-colors border border-transparent hover:border-slate-200" title="Profilim">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-violet-500 text-white flex items-center justify-center font-bold text-sm shadow-md">{currentUser.username.substring(0,2).toUpperCase()}</div>
               <span className="font-bold text-sm text-slate-700 hidden sm:block capitalize">{currentUser.username}</span>
             </button>
-            <button onClick={handleLogout} className="text-slate-400 hover:text-red-500 p-2 rounded-lg hover:bg-red-50 transition-colors" title="Çıkış Yap">
-              <LogOut size={20} />
-            </button>
+            <button onClick={handleLogout} className="text-slate-400 hover:text-red-500 p-2 rounded-lg hover:bg-red-50 transition-colors" title="Çıkış Yap"><LogOut size={20} /></button>
           </div>
         </div>
       </header>
 
       {/* ANA İÇERİK ALANI */}
       <main className="max-w-6xl mx-auto px-4 py-8 relative z-10">
-        
-        {/* DÖNEM SEÇİCİ VE AKSİYONLAR */}
         {(activeTab === 'dashboard' || activeTab === 'list') && (
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
             <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -749,18 +689,9 @@ export default function App() {
                 {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
               </select>
             </div>
-            
             {currentUser.role === 'admin' && (
               <div className="flex gap-2 w-full sm:w-auto">
-                {activeTab === 'list' && canCopyFromPreviousMonth && (
-                  <button 
-                    onClick={handleCopyFromPreviousMonth}
-                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-slate-800 text-white px-5 py-2.5 rounded-xl hover:bg-slate-700 transition-colors font-bold shadow-sm"
-                  >
-                    <Copy size={18} /> Geçen Aydan Aktar
-                  </button>
-                )}
-                
+                {activeTab === 'list' && canCopyFromPreviousMonth && <button onClick={handleCopyFromPreviousMonth} className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-slate-800 text-white px-5 py-2.5 rounded-xl hover:bg-slate-700 transition-colors font-bold shadow-sm"><Copy size={18} /> Geçen Aydan Aktar</button>}
                 <button onClick={() => openForm()} className="relative overflow-hidden group flex-1 sm:flex-none flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-6 py-2.5 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-indigo-200 font-bold">
                   <div className="absolute inset-0 w-full h-full bg-white/20 group-hover:translate-x-full transition-transform duration-700 ease-out -skew-x-12 -translate-x-full"></div>
                   <Plus size={20} className="group-hover:rotate-90 transition-transform duration-300" /> Yeni Kayıt
@@ -777,20 +708,14 @@ export default function App() {
               <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
                 <div className="absolute -right-10 -top-10 w-40 h-40 bg-indigo-50 rounded-full blur-3xl pointer-events-none"></div>
                 <div className="absolute -left-10 -bottom-10 w-40 h-40 bg-violet-50 rounded-full blur-3xl pointer-events-none"></div>
-                
                 <div className="flex items-center gap-5 z-10 w-full md:w-auto">
-                  <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${summary.net >= 0 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
-                    <Wallet size={32} />
-                  </div>
+                  <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${summary.net >= 0 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}><Wallet size={32} /></div>
                   <div>
                     <p className="text-slate-500 font-bold mb-1">Net Durum ({MONTHS.find(m=>m.value===selectedMonth)?.label})</p>
-                    <p className={`text-4xl sm:text-5xl font-black tracking-tight ${summary.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {summary.net > 0 ? '+' : ''}{formatCurrency(summary.net)}
-                    </p>
+                    <p className={`text-4xl sm:text-5xl font-black tracking-tight ${summary.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>{summary.net > 0 ? '+' : ''}{formatCurrency(summary.net)}</p>
                   </div>
                 </div>
               </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
                   <div className="w-14 h-14 rounded-2xl bg-green-50 text-green-600 flex items-center justify-center"><ArrowUpCircle size={28} /></div>
@@ -802,7 +727,6 @@ export default function App() {
                 </div>
               </div>
             </div>
-
             <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
               <h3 className="text-lg font-bold text-slate-800 mb-6">{selectedYear} Yılı Net Durum Grafiği</h3>
               <div className="h-80 w-full">
@@ -812,27 +736,18 @@ export default function App() {
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12, fontWeight: 600}} />
                     <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12, fontWeight: 600}} tickFormatter={(value) => `₺${value}`} />
                     <Tooltip formatter={(value) => formatCurrency(value)} cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontWeight: 'bold'}} />
-                    <Bar dataKey="Net" radius={[4, 4, 0, 0]}>
-                      {dashboardData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.Net >= 0 ? '#10b981' : '#ef4444'} />)}
-                    </Bar>
+                    <Bar dataKey="Net" radius={[4, 4, 0, 0]}>{dashboardData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.Net >= 0 ? '#10b981' : '#ef4444'} />)}</Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             </div>
-
-            {/* Aylık Özet Listesi */}
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mt-6">
-              <div className="p-6 border-b border-slate-100 bg-slate-50/50">
-                <h3 className="text-lg font-bold text-slate-800">{selectedYear} Yılı Aylık Detay Listesi</h3>
-              </div>
+              <div className="p-6 border-b border-slate-100 bg-slate-50/50"><h3 className="text-lg font-bold text-slate-800">{selectedYear} Yılı Aylık Detay Listesi</h3></div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse hidden md:table">
                   <thead>
                     <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
-                      <th className="px-6 py-4 font-bold">Ay</th>
-                      <th className="px-6 py-4 font-bold text-right">Toplam Gelir</th>
-                      <th className="px-6 py-4 font-bold text-right">Toplam Gider</th>
-                      <th className="px-6 py-4 font-bold text-right">Net Durum</th>
+                      <th className="px-6 py-4 font-bold">Ay</th><th className="px-6 py-4 font-bold text-right">Toplam Gelir</th><th className="px-6 py-4 font-bold text-right">Toplam Gider</th><th className="px-6 py-4 font-bold text-right">Net Durum</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-slate-100">
@@ -841,9 +756,7 @@ export default function App() {
                         <td className="px-6 py-4 whitespace-nowrap font-bold text-slate-700">{data.name}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-green-600 font-bold">{formatCurrency(data.Gelir)}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-red-600 font-bold">{formatCurrency(data.Gider)}</td>
-                        <td className={`px-6 py-4 whitespace-nowrap text-right font-black ${data.Net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {data.Net > 0 ? '+' : ''}{formatCurrency(data.Net)}
-                        </td>
+                        <td className={`px-6 py-4 whitespace-nowrap text-right font-black ${data.Net >= 0 ? 'text-green-600' : 'text-red-600'}`}>{data.Net > 0 ? '+' : ''}{formatCurrency(data.Net)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -851,16 +764,8 @@ export default function App() {
                 <div className="md:hidden flex flex-col divide-y divide-slate-100">
                   {dashboardData.map((data, index) => (
                     <div key={`mobile-dash-${index}`} className="p-4 bg-white flex flex-col gap-2 hover:bg-slate-50 transition-colors">
-                      <div className="flex justify-between items-center">
-                        <span className="font-bold text-slate-700">{data.name}</span>
-                        <span className={`font-black ${data.Net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {data.Net > 0 ? '+' : ''}{formatCurrency(data.Net)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-slate-500 font-medium">Gelir: <span className="text-green-600 font-bold">{formatCurrency(data.Gelir)}</span></span>
-                        <span className="text-slate-500 font-medium">Gider: <span className="text-red-600 font-bold">{formatCurrency(data.Gider)}</span></span>
-                      </div>
+                      <div className="flex justify-between items-center"><span className="font-bold text-slate-700">{data.name}</span><span className={`font-black ${data.Net >= 0 ? 'text-green-600' : 'text-red-600'}`}>{data.Net > 0 ? '+' : ''}{formatCurrency(data.Net)}</span></div>
+                      <div className="flex justify-between items-center text-sm"><span className="text-slate-500 font-medium">Gelir: <span className="text-green-600 font-bold">{formatCurrency(data.Gelir)}</span></span><span className="text-slate-500 font-medium">Gider: <span className="text-red-600 font-bold">{formatCurrency(data.Gider)}</span></span></div>
                     </div>
                   ))}
                 </div>
@@ -874,52 +779,29 @@ export default function App() {
            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
              <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                <h2 className="text-lg font-bold text-slate-800">İşlem Listesi ({MONTHS.find(m => m.value === selectedMonth)?.label} {selectedYear})</h2>
-               
-               {currentMonthTransactions.length > 0 && (
-                 <button onClick={handleExportExcel} className="flex items-center gap-2 px-4 py-2 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 rounded-lg font-bold transition-colors text-sm shadow-sm">
-                   <Download size={16} /> Excel İndir
-                 </button>
-               )}
+               {currentMonthTransactions.length > 0 && <button onClick={handleExportExcel} className="flex items-center gap-2 px-4 py-2 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 rounded-lg font-bold transition-colors text-sm shadow-sm"><Download size={16} /> Excel İndir</button>}
              </div>
              {currentMonthTransactions.length === 0 ? (
                <div className="p-12 text-center">
-                 <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
-                   <ListOrdered size={32} />
-                 </div>
+                 <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400"><ListOrdered size={32} /></div>
                  <p className="text-slate-500 font-bold">Bu döneme ait kayıt bulunamadı.</p>
-                 <p className="text-slate-400 text-sm mt-1 font-medium">
-                   {currentUser.role === 'admin' ? '"Yeni Kayıt" butonuna tıklayarak eklemeye başlayın.' : 'Bu dönemde henüz işlem yapılmamış.'}
-                 </p>
+                 <p className="text-slate-400 text-sm mt-1 font-medium">{currentUser.role === 'admin' ? '"Yeni Kayıt" butonuna tıklayarak eklemeye başlayın.' : 'Bu dönemde henüz işlem yapılmamış.'}</p>
                </div>
              ) : (
                <div className="overflow-x-auto">
                  <table className="w-full text-left border-collapse hidden md:table">
                    <thead>
                      <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
-                       <th className="px-6 py-4 font-bold">Kategori</th>
-                       <th className="px-6 py-4 font-bold">Tarih</th>
-                       <th className="px-6 py-4 font-bold">Açıklama</th>
-                       <th className="px-6 py-4 font-bold text-right">Tutar</th>
-                       {currentUser.role === 'admin' && <th className="px-6 py-4 font-bold text-right">İşlem</th>}
+                       <th className="px-6 py-4 font-bold">Kategori</th><th className="px-6 py-4 font-bold">Tarih</th><th className="px-6 py-4 font-bold">Açıklama</th><th className="px-6 py-4 font-bold text-right">Tutar</th>{currentUser.role === 'admin' && <th className="px-6 py-4 font-bold text-right">İşlem</th>}
                      </tr>
                    </thead>
                    <tbody className="bg-white divide-y divide-slate-100">
                      {currentMonthTransactions.map((t) => (
                        <tr key={t.id} className="hover:bg-slate-50 transition-colors group">
-                         <td className="px-6 py-4 whitespace-nowrap">
-                           <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold border ${
-                             t.type === 'GELİR' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'
-                           }`}>
-                             {t.categoryName || t.categoryId}
-                           </span>
-                         </td>
-                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 font-medium">
-                           {t.date.split('-').reverse().join('.')}
-                         </td>
+                         <td className="px-6 py-4 whitespace-nowrap"><span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold border ${t.type === 'GELİR' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>{t.categoryName || t.categoryId}</span></td>
+                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 font-medium">{t.date.split('-').reverse().join('.')}</td>
                          <td className="px-6 py-4 text-sm text-slate-600 font-medium max-w-xs truncate" title={t.description}>{t.description || '-'}</td>
-                         <td className={`px-6 py-4 whitespace-nowrap text-right font-black ${t.type === 'GELİR' ? 'text-green-600' : 'text-red-600'}`}>
-                           {t.type === 'GELİR' ? '+' : '-'}{formatCurrency(t.amount)}
-                         </td>
+                         <td className={`px-6 py-4 whitespace-nowrap text-right font-black ${t.type === 'GELİR' ? 'text-green-600' : 'text-red-600'}`}>{t.type === 'GELİR' ? '+' : '-'}{formatCurrency(t.amount)}</td>
                          {currentUser.role === 'admin' && (
                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
                              <button onClick={() => openForm(t)} className="text-slate-400 hover:text-indigo-600 p-1.5 transition-colors" title="Düzenle"><Edit2 size={16} /></button>
@@ -930,20 +812,12 @@ export default function App() {
                      ))}
                    </tbody>
                  </table>
-
                  <div className="md:hidden flex flex-col divide-y divide-slate-100">
                    {currentMonthTransactions.map((t) => (
                      <div key={`mobile-trans-${t.id}`} className="p-4 bg-white flex flex-col gap-3 hover:bg-slate-50 transition-colors">
                        <div className="flex justify-between items-start">
-                         <div className="flex flex-col gap-1">
-                           <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold border self-start ${t.type === 'GELİR' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
-                             {t.categoryName || t.categoryId}
-                           </span>
-                           <span className="text-xs text-slate-500 mt-1 font-medium">{t.date.split('-').reverse().join('.')}</span>
-                         </div>
-                         <span className={`font-black ${t.type === 'GELİR' ? 'text-green-600' : 'text-red-600'}`}>
-                           {t.type === 'GELİR' ? '+' : '-'}{formatCurrency(t.amount)}
-                         </span>
+                         <div className="flex flex-col gap-1"><span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold border self-start ${t.type === 'GELİR' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>{t.categoryName || t.categoryId}</span><span className="text-xs text-slate-500 mt-1 font-medium">{t.date.split('-').reverse().join('.')}</span></div>
+                         <span className={`font-black ${t.type === 'GELİR' ? 'text-green-600' : 'text-red-600'}`}>{t.type === 'GELİR' ? '+' : '-'}{formatCurrency(t.amount)}</span>
                        </div>
                        {t.description && <p className="text-sm text-slate-600 bg-slate-50 p-2 rounded-lg font-medium">{t.description}</p>}
                        {currentUser.role === 'admin' && (
@@ -964,27 +838,12 @@ export default function App() {
         {activeTab === 'settings' && (
           <div className="max-w-2xl mx-auto space-y-6">
              <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
-                <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-                  <Settings size={20} className="text-indigo-600"/> Kategori Yönetimi
-                </h2>
-                
+                <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2"><Settings size={20} className="text-indigo-600"/> Kategori Yönetimi</h2>
                 <form onSubmit={handleCategorySubmit} className="flex flex-col sm:flex-row gap-4 mb-8 p-4 bg-slate-50 rounded-xl border border-slate-200">
-                   <div className="flex-1">
-                     <label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Kategori Adı</label>
-                     <input type="text" value={categoryForm.name} onChange={(e) => setCategoryForm({...categoryForm, name: e.target.value})} className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:border-indigo-500 font-medium" placeholder="Örn: YEMEK" required />
-                   </div>
-                   <div className="w-full sm:w-32">
-                     <label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Tür</label>
-                     <select value={categoryForm.type} onChange={(e) => setCategoryForm({...categoryForm, type: e.target.value})} className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:border-indigo-500 font-medium">
-                       <option value="GİDER">GİDER</option><option value="GELİR">GELİR</option>
-                     </select>
-                   </div>
-                   <div className="flex items-end gap-2">
-                     <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-bold h-[42px] min-w-[100px]">{categoryForm.id ? 'Güncelle' : 'Ekle'}</button>
-                     {categoryForm.id && <button type="button" onClick={() => setCategoryForm({ id: null, name: '', type: 'GİDER' })} className="px-3 py-2 bg-slate-200 text-slate-600 rounded-lg hover:bg-slate-300 transition-colors h-[42px] flex items-center justify-center"><X size={18} /></button>}
-                   </div>
+                   <div className="flex-1"><label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Kategori Adı</label><input type="text" value={categoryForm.name} onChange={(e) => setCategoryForm({...categoryForm, name: e.target.value})} className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:border-indigo-500 font-medium" placeholder="Örn: YEMEK" required /></div>
+                   <div className="w-full sm:w-32"><label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Tür</label><select value={categoryForm.type} onChange={(e) => setCategoryForm({...categoryForm, type: e.target.value})} className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:border-indigo-500 font-medium"><option value="GİDER">GİDER</option><option value="GELİR">GELİR</option></select></div>
+                   <div className="flex items-end gap-2"><button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-bold h-[42px] min-w-[100px]">{categoryForm.id ? 'Güncelle' : 'Ekle'}</button>{categoryForm.id && <button type="button" onClick={() => setCategoryForm({ id: null, name: '', type: 'GİDER' })} className="px-3 py-2 bg-slate-200 text-slate-600 rounded-lg hover:bg-slate-300 transition-colors h-[42px] flex items-center justify-center"><X size={18} /></button>}</div>
                 </form>
-
                 <div className="space-y-4">
                   <div>
                     <h3 className="text-sm font-bold text-red-600 mb-3 uppercase tracking-wider border-b border-slate-100 pb-2">Gider Kategorileri</h3>
@@ -1022,110 +881,41 @@ export default function App() {
         {/* TAB 4: ADMIN PANELİ */}
         {activeTab === 'admin' && currentUser.role === 'admin' && (
           <div className="max-w-4xl mx-auto space-y-6">
-            
-            {/* SİSTEM AYARLARI (ŞEHİR SEÇİMİ VE EFEKT SEÇİMİ) */}
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
               <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-6"><MapPin size={20} className="text-indigo-600"/> Sistem Ayarları (Hava Durumu)</h2>
               <div className="flex flex-col md:flex-row gap-4 items-end">
-                <div className="flex-1 w-full md:w-1/2">
-                  <label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Geçerli Şehir (Sıcaklık)</label>
-                  <select value={systemCity.name} onChange={handleCityChange} className="w-full px-4 py-2 border border-slate-300 rounded-xl outline-none focus:border-indigo-500 font-medium bg-slate-50">
-                    {CITIES.map(c => (
-                      <option key={c.name} value={c.name}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex-1 w-full md:w-1/2">
-                  <label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Arka Plan Efekti</label>
-                  <select value={weatherOverride} onChange={handleWeatherOverrideChange} className="w-full px-4 py-2 border border-slate-300 rounded-xl outline-none focus:border-indigo-500 font-medium bg-slate-50">
-                    <option value="auto">Otomatik (Gerçek Zamanlı)</option>
-                    <option value="clear">Güneşli / Açık</option>
-                    <option value="clouds">Bulutlu</option>
-                    <option value="rain">Yağmurlu</option>
-                    <option value="snow">Karlı</option>
-                  </select>
-                </div>
+                <div className="flex-1 w-full md:w-1/2"><label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Geçerli Şehir (Sıcaklık)</label><select value={systemCity.name} onChange={handleCityChange} className="w-full px-4 py-2 border border-slate-300 rounded-xl outline-none focus:border-indigo-500 font-medium bg-slate-50">{CITIES.map(c => (<option key={c.name} value={c.name}>{c.name}</option>))}</select></div>
+                <div className="flex-1 w-full md:w-1/2"><label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Arka Plan Efekti</label><select value={weatherOverride} onChange={handleWeatherOverrideChange} className="w-full px-4 py-2 border border-slate-300 rounded-xl outline-none focus:border-indigo-500 font-medium bg-slate-50"><option value="auto">Otomatik (Gerçek Zamanlı)</option><option value="clear">Güneşli / Açık</option><option value="clouds">Bulutlu</option><option value="rain">Yağmurlu</option><option value="snow">Karlı</option></select></div>
               </div>
             </div>
 
-            {/* YENİ KULLANICI EKLEME FORMU */}
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
               <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-6"><Users size={20} className="text-indigo-600"/> Yeni Kullanıcı Ekle</h2>
               <form onSubmit={handleAdminAddUser} className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1">
-                  <label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Kullanıcı Adı</label>
-                  <input type="text" required value={newUserForm.username} onChange={(e) => setNewUserForm({...newUserForm, username: e.target.value})} className="w-full px-4 py-2 border border-slate-300 rounded-xl outline-none focus:border-indigo-500 font-medium bg-slate-50" placeholder="Örn: ahmet123" />
-                </div>
-                <div className="flex-1">
-                  <label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Geçici Şifre</label>
-                  <input type="text" required value={newUserForm.password} onChange={(e) => setNewUserForm({...newUserForm, password: e.target.value})} className="w-full px-4 py-2 border border-slate-300 rounded-xl outline-none focus:border-indigo-500 font-medium bg-slate-50" placeholder="Örn: 123456" />
-                </div>
-                <div className="w-full md:w-32">
-                  <label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Yetki</label>
-                  <select value={newUserForm.role} onChange={(e) => setNewUserForm({...newUserForm, role: e.target.value})} className="w-full px-4 py-2 border border-slate-300 rounded-xl outline-none focus:border-indigo-500 font-medium bg-slate-50">
-                    <option value="user">Standart</option>
-                    <option value="admin">Superadmin</option>
-                  </select>
-                </div>
-                <div className="flex items-end">
-                  <button type="submit" className="w-full md:w-auto px-6 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors font-bold flex items-center justify-center gap-2 h-[42px]">
-                    <Plus size={18} /> Ekle
-                  </button>
-                </div>
+                <div className="flex-1"><label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Kullanıcı Adı</label><input type="text" required value={newUserForm.username} onChange={(e) => setNewUserForm({...newUserForm, username: e.target.value})} className="w-full px-4 py-2 border border-slate-300 rounded-xl outline-none focus:border-indigo-500 font-medium bg-slate-50" placeholder="Örn: ahmet123" /></div>
+                <div className="flex-1"><label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Geçici Şifre</label><input type="text" required value={newUserForm.password} onChange={(e) => setNewUserForm({...newUserForm, password: e.target.value})} className="w-full px-4 py-2 border border-slate-300 rounded-xl outline-none focus:border-indigo-500 font-medium bg-slate-50" placeholder="Örn: 123456" /></div>
+                <div className="w-full md:w-32"><label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Yetki</label><select value={newUserForm.role} onChange={(e) => setNewUserForm({...newUserForm, role: e.target.value})} className="w-full px-4 py-2 border border-slate-300 rounded-xl outline-none focus:border-indigo-500 font-medium bg-slate-50"><option value="user">Standart</option><option value="admin">Superadmin</option></select></div>
+                <div className="flex items-end"><button type="submit" className="w-full md:w-auto px-6 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors font-bold flex items-center justify-center gap-2 h-[42px]"><Plus size={18} /> Ekle</button></div>
               </form>
             </div>
 
-            {/* KULLANICI LİSTESİ */}
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-              <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-                <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2"><Shield size={20} className="text-indigo-600"/> Sistem Kullanıcıları</h2>
-                <span className="bg-indigo-100 text-indigo-700 py-1 px-3 rounded-full text-xs font-bold">Toplam: {appUsers.length}</span>
-              </div>
-              
+              <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center"><h2 className="text-lg font-bold text-slate-800 flex items-center gap-2"><Shield size={20} className="text-indigo-600"/> Sistem Kullanıcıları</h2><span className="bg-indigo-100 text-indigo-700 py-1 px-3 rounded-full text-xs font-bold">Toplam: {appUsers.length}</span></div>
               <div className="overflow-x-auto p-6">
                 <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
-                      <th className="px-4 py-3 font-bold">ID / Rol</th>
-                      <th className="px-4 py-3 font-bold">Kullanıcı Adı</th>
-                      <th className="px-4 py-3 font-bold">Şifre Belirle</th>
-                      <th className="px-4 py-3 font-bold text-right">Aksiyon</th>
-                    </tr>
-                  </thead>
+                  <thead><tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200"><th className="px-4 py-3 font-bold">ID / Rol</th><th className="px-4 py-3 font-bold">Kullanıcı Adı</th><th className="px-4 py-3 font-bold">Şifre Belirle</th><th className="px-4 py-3 font-bold text-right">Aksiyon</th></tr></thead>
                   <tbody className="divide-y divide-slate-100">
                     {appUsers.map((u) => (
                       <tr key={u.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ${u.role === 'admin' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>
-                            {u.role === 'admin' ? 'SUPERADMIN' : 'STANDART'}
-                          </span>
-                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap"><span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ${u.role === 'admin' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>{u.role === 'admin' ? 'SUPERADMIN' : 'STANDART'}</span></td>
                         <td className="px-4 py-3 whitespace-nowrap font-bold text-slate-700">{u.username}</td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <div className="flex items-center gap-2">
-                            <input 
-                              type="text" 
-                              defaultValue={u.password} 
-                              onBlur={(e) => {
-                                if(e.target.value && e.target.value !== u.password) {
-                                  handleAdminPasswordChange(u.id, e.target.value);
-                                }
-                              }}
-                              className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm w-32 focus:ring-1 focus:ring-indigo-500 outline-none font-medium text-slate-600"
-                            />
+                            <input type="text" defaultValue={u.password} onBlur={(e) => { if(e.target.value && e.target.value !== u.password) handleAdminPasswordChange(u.id, e.target.value); }} className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm w-32 focus:ring-1 focus:ring-indigo-500 outline-none font-medium text-slate-600" />
                             <span className="text-xs text-slate-400 italic">Değiştir & Tıkla</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-right">
-                          <button 
-                            onClick={() => handleAdminDeleteUser(u.id)} 
-                            disabled={u.id === currentUser.id}
-                            className={`p-1.5 rounded-lg transition-colors ${u.id === currentUser.id ? 'text-slate-300 cursor-not-allowed' : 'text-slate-400 hover:text-red-600 hover:bg-red-50'}`}
-                            title={u.id === currentUser.id ? "Kendinizi silemezsiniz" : "Kullanıcıyı Sil"}
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-right"><button onClick={() => handleAdminDeleteUser(u.id)} disabled={u.id === currentUser.id} className={`p-1.5 rounded-lg transition-colors ${u.id === currentUser.id ? 'text-slate-300 cursor-not-allowed' : 'text-slate-400 hover:text-red-600 hover:bg-red-50'}`} title={u.id === currentUser.id ? "Kendinizi silemezsiniz" : "Kullanıcıyı Sil"}><Trash2 size={16} /></button></td>
                       </tr>
                     ))}
                   </tbody>
@@ -1134,54 +924,33 @@ export default function App() {
             </div>
           </div>
         )}
-
       </main>
 
-      {/* PROFİL MODAL */}
       {isProfileOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
-            <div className="flex justify-between items-center p-5 border-b border-slate-100 bg-slate-50/50">
-              <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2"><User size={20} className="text-indigo-600" /> Profilim</h2>
-              <button onClick={() => setIsProfileOpen(false)} className="text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-colors"><X size={18} /></button>
-            </div>
-            
+            <div className="flex justify-between items-center p-5 border-b border-slate-100 bg-slate-50/50"><h2 className="text-lg font-bold text-slate-800 flex items-center gap-2"><User size={20} className="text-indigo-600" /> Profilim</h2><button onClick={() => setIsProfileOpen(false)} className="text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-colors"><X size={18} /></button></div>
             <div className="p-6 flex flex-col items-center border-b border-slate-100">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-indigo-500 to-violet-500 text-white flex items-center justify-center font-bold text-2xl shadow-lg mb-3">
-                {currentUser.username.substring(0,2).toUpperCase()}
-              </div>
+              <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-indigo-500 to-violet-500 text-white flex items-center justify-center font-bold text-2xl shadow-lg mb-3">{currentUser.username.substring(0,2).toUpperCase()}</div>
               <h3 className="font-black text-xl text-slate-800 capitalize">{currentUser.username}</h3>
-              <span className={`mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${currentUser.role === 'admin' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>
-                {currentUser.role === 'admin' ? 'Superadmin' : 'Standart Kullanıcı'}
-              </span>
+              <span className={`mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${currentUser.role === 'admin' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>{currentUser.role === 'admin' ? 'Superadmin' : 'Standart Kullanıcı'}</span>
             </div>
-
             <form onSubmit={handleProfileUpdate} className="p-6 bg-slate-50/30">
               <h4 className="font-bold text-sm text-slate-700 mb-4 flex items-center gap-2"><Key size={16}/> Şifre Değiştir</h4>
               <div className="space-y-4">
-                <div>
-                  <input type="password" required value={profileForm.currentPass} onChange={(e) => setProfileForm({...profileForm, currentPass: e.target.value})} placeholder="Mevcut Şifreniz" className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-sm"/>
-                </div>
-                <div>
-                  <input type="password" required value={profileForm.newPass} onChange={(e) => setProfileForm({...profileForm, newPass: e.target.value})} placeholder="Yeni Şifre" className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-sm"/>
-                </div>
-                <button type="submit" className="w-full bg-slate-800 text-white py-2.5 rounded-xl font-bold hover:bg-slate-700 transition-colors">
-                  Şifremi Güncelle
-                </button>
+                <div><input type="password" required value={profileForm.currentPass} onChange={(e) => setProfileForm({...profileForm, currentPass: e.target.value})} placeholder="Mevcut Şifreniz" className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-sm"/></div>
+                <div><input type="password" required value={profileForm.newPass} onChange={(e) => setProfileForm({...profileForm, newPass: e.target.value})} placeholder="Yeni Şifre" className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-sm"/></div>
+                <button type="submit" className="w-full bg-slate-800 text-white py-2.5 rounded-xl font-bold hover:bg-slate-700 transition-colors">Şifremi Güncelle</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* FORM MODAL (Kayıt/Düzenleme) */}
       {isFormOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-            <div className="flex justify-between items-center p-5 border-b border-slate-100">
-              <h2 className="text-xl font-bold text-slate-800">{formData.id ? 'Kaydı Düzenle' : 'Yeni Kayıt Ekle'}</h2>
-              <button onClick={closeForm} className="text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-colors"><X size={20} /></button>
-            </div>
+            <div className="flex justify-between items-center p-5 border-b border-slate-100"><h2 className="text-xl font-bold text-slate-800">{formData.id ? 'Kaydı Düzenle' : 'Yeni Kayıt Ekle'}</h2><button onClick={closeForm} className="text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-colors"><X size={20} /></button></div>
             <form onSubmit={handleTransactionSubmit} className="p-5 space-y-5">
               <div className="flex bg-slate-100 p-1 rounded-xl">
                 <button type="button" onClick={() => setFormData({...formData, type: 'GİDER', categoryId: ''})} className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${formData.type === 'GİDER' ? 'bg-white text-red-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}><ArrowDownCircle size={18} /> Gider</button>
@@ -1198,31 +967,15 @@ export default function App() {
                 </div>
                 <input type="text" className="opacity-0 absolute h-0 w-0" required value={formData.categoryId} onChange={() => {}} />
               </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">Tarih</label>
-                <input type="date" required min={minDate} max={maxDate} value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium"/>
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">Tutar (₺)</label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><span className="text-slate-400 font-bold">₺</span></div>
-                  <input type="number" step="0.01" min="0" required value={formData.amount} onChange={(e) => setFormData({...formData, amount: e.target.value})} className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-bold" placeholder="0.00" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">Açıklama</label>
-                <textarea rows="2" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all resize-none font-medium" placeholder="İsteğe bağlı..."></textarea>
-              </div>
-              <div className="pt-4 flex gap-3">
-                <button type="button" onClick={closeForm} className="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition-colors">İptal</button>
-                <button type="submit" className="flex-1 px-4 py-3 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-200">Kaydet</button>
-              </div>
+              <div><label className="block text-sm font-bold text-slate-700 mb-1">Tarih</label><input type="date" required min={minDate} max={maxDate} value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium"/></div>
+              <div><label className="block text-sm font-bold text-slate-700 mb-1">Tutar (₺)</label><div className="relative"><div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><span className="text-slate-400 font-bold">₺</span></div><input type="number" step="0.01" min="0" required value={formData.amount} onChange={(e) => setFormData({...formData, amount: e.target.value})} className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-bold" placeholder="0.00" /></div></div>
+              <div><label className="block text-sm font-bold text-slate-700 mb-1">Açıklama</label><textarea rows="2" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all resize-none font-medium" placeholder="İsteğe bağlı..."></textarea></div>
+              <div className="pt-4 flex gap-3"><button type="button" onClick={closeForm} className="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition-colors">İptal</button><button type="submit" className="flex-1 px-4 py-3 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-200">Kaydet</button></div>
             </form>
           </div>
         </div>
       )}
 
-      {/* CUSTOM DIALOG */}
       {dialog.isOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden p-6 text-center">
@@ -1234,7 +987,6 @@ export default function App() {
           </div>
         </div>
       )}
-
     </div>
   );
 }
