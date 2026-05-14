@@ -13,9 +13,8 @@ import {
 // ==========================================
 // 🚀 API VE SUNUCU AYARLARI (POSTGRESQL İÇİN)
 // ==========================================
-const API_BASE_URL = "https://api.senindomainin.com"; // Kendi sunucu domaininiz
-const USE_REAL_API = false; // Kendi sunucunuzu kurduğunuzda bunu TRUE yapın. (Şu an test için false)
-
+const API_BASE_URL = "/api"; // Aynı domainde olduğu için sadece /api yazıyoruz
+const USE_REAL_API = true; // Gerçek veritabanını aktif ediyoruz
 // --- API SERVİS KATMANI (Frontend ile Backend arasındaki köprü) ---
 const api = {
   // Eğer USE_REAL_API true ise fetch ile sunucuya gider, false ise LocalStorage kullanır (Canvas'ta çalışması için)
