@@ -1,17 +1,15 @@
-import clientPromise from "../lib/mongodb.js";
+import clientPromise from "../lib/mongodb.js"; // Yolun doğru olduğundan emin ol
+
 export default async function handler(req, res) {
   try {
     const client = await clientPromise;
-    // 'finans_db' yazan yere kendi veritabanı ismini verebilirsin
-    const db = client.db("finans_db"); 
+    const db = client.db("finans_db"); // Veritabanı ismini sabitledik
 
     if (req.method === "GET") {
-      // Veritabanındaki kayıtları React'a gönder
       const data = await db.collection("transactions").find({}).toArray();
       return res.status(200).json(data);
     } 
     else if (req.method === "POST") {
-      // React'tan gelen yeni kaydı veritabanına ekle
       const newTransaction = req.body;
       await db.collection("transactions").insertOne(newTransaction);
       return res.status(201).json({ success: true, data: newTransaction });
