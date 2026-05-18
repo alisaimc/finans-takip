@@ -394,30 +394,43 @@ export default function App() {
   };
 
   // --- İŞLEMLER ---
-  const handleTransactionSubmit = (e) => {
+  const handleTransactionSubmit = async (e) => {
     e.preventDefault();
     if (!formData.categoryId) return showAlert("Lütfen bir kategori seçiniz!");
 
     const selectedCat = categories.find(c => c.id === formData.categoryId);
-    const [tYear, tMonth] = formData.date.split('-');
-    if (parseInt(tMonth) !== parseInt(selectedMonth) || parseInt(tYear) !== parseInt(selectedYear)) {
-       return showAlert("Lütfen sadece seçili olan döneme (Ay/Yıl) ait bir tarih giriniz.");
-    }
-
+    
+    // Gönderilecek Veriyi Hazırlama
     const newTransaction = {
       ...formData,
-      id: formData.id || Date.now().toString() + Math.random().toString(36).substring(2, 9),
+      id: formData.id || Date.now().toString(),
       categoryName: selectedCat ? selectedCat.name : formData.categoryId,
     };
 
-    let updatedList = formData.id 
-      ? transactions.map(t => t.id === formData.id ? newTransaction : t) 
-      : [...transactions, newTransaction];
+    try {
+      // API'ye İstek Atma (MongoDB'ye Kayıt)
+      const response = await fetch('/api/transaction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newTransaction)
+      });
 
-    setTransactions(updatedList);
-    localStorage.setItem('transactions_shared', JSON.stringify(updatedList));
-    closeForm();
+      if (response.ok) {
+        // Ekrandaki Listeyi Güncelle
+        let updatedList = formData.id 
+          ? transactions.map(t => t.id === formData.id ? newTransaction : t) 
+          : [...transactions, newTransaction];
+
+        setTransactions(updatedList);
+        closeForm();
+        showAlert("Kayıt başarıyla buluta eklendi!");
+      }
+    } catch (error) {
+      showAlert("Buluta kaydedilirken bir hata oluştu!");
+      console.error(error);
+    }
   };
+
 
   const handleDeleteTransaction = (id) => {
     showConfirm('Bu kaydı silmek istediğinize emin misiniz?', () => {
