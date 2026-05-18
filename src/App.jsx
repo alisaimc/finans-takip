@@ -43,114 +43,36 @@ const WeatherBackground = ({ city, override }) => {
   const [weatherData, setWeatherData] = useState({ type: 'clear', temp: null });
   const [particles, setParticles] = useState([]);
 
-  // API'den gerçek veriyi çek
+  // --- VERİTABANINDAN VERİLERİ ÇEKME EFEKTİ ---
   useEffect(() => {
-    if (!city) return;
-    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}&current_weather=true`)
-      .then(res => res.json())
-      .then(data => {
-        const code = data.current_weather.weathercode;
-        const temp = data.current_weather.temperature;
-        let type = 'clear';
-        
-        // WMO Hava Durumu Kodları Analizi
-        if ([71, 73, 75, 77, 85, 86].includes(code)) type = 'snow';
-        else if ([51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99].includes(code)) type = 'rain';
-        else if ([1, 2, 3, 45, 48].includes(code)) type = 'clouds';
-        
-        setWeatherData({ type, temp });
-      })
-      .catch(err => console.error("Hava durumu çekilemedi", err));
-  }, [city]);
-
-  // Gösterilecek efekti belirle (Manuel seçilmişse onu kullan, yoksa API'yi kullan)
-  const displayType = override === 'auto' ? weatherData.type : override;
-  const temp = weatherData.temp;
-
-  // Efekt değiştiğinde parçacıkları yeniden oluştur
-  useEffect(() => {
-    const newParticles = Array.from({ length: displayType === 'rain' ? 80 : displayType === 'snow' ? 60 : 10 }).map((_, i) => ({
-      id: i,
-      left: `${Math.random() * 100}%`,
-      top: `-${Math.random() * 20 + 10}vh`,
-      duration: displayType === 'rain' ? Math.random() * 0.5 + 0.5 : Math.random() * 3 + 3,
-      delay: Math.random() * 2,
-      size: displayType === 'rain' ? Math.random() * 2 + 1 : Math.random() * 4 + 3,
-      opacity: Math.random() * 0.5 + 0.3
-    }));
-    setParticles(newParticles);
-  }, [displayType]);
-
-  // Hava durumuna göre arkaplan renk geçişleri
-  const bgGradients = {
-    snow: 'linear-gradient(-45deg, #7dd3fc, #bae6fd, #e2e8f0, #7dd3fc)',
-    rain: 'linear-gradient(-45deg, #64748b, #94a3b8, #cbd5e1, #64748b)',
-    clouds: 'linear-gradient(-45deg, #cbd5e1, #e2e8f0, #f1f5f9, #cbd5e1)',
-    clear: 'linear-gradient(-45deg, #f0fdfa, #fefce8, #fff1f2, #e0e7ff)'
-  };
-
-  const weatherIcons = { snow: '❄️', rain: '🌧️', clouds: '☁️', clear: '☀️' };
-
-  return (
-    <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
-      <style>{`
-        @keyframes dynamic-weather-bg { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
-        @keyframes fall-down { to { transform: translateY(120vh); } }
-        @keyframes drift { 0% { transform: translate(0, -10vh); } 50% { transform: translate(30px, 50vh); } 100% { transform: translate(-20px, 120vh); } }
-        @keyframes float-cloud { 0% { transform: translateX(-5%) translateY(0); } 50% { transform: translateX(5%) translateY(20px); } 100% { transform: translateX(-5%) translateY(0); } }
-        
-        .bg-weather-animate { 
-          position: absolute; inset: 0;
-          background-size: 400% 400%; 
-          animation: dynamic-weather-bg 15s ease infinite; 
-          background-image: ${bgGradients[displayType]}; 
-          transition: background-image 2s ease; 
+    if (currentUser) {
+      const fetchTransactions = async () => {
+        try {
+          const response = await fetch('/api/transaction');
+          if (response.ok) {
+            const data = await response.json();
+            setTransactions(data); // Veritabanından gelen veriler state'e aktarılıyor
+          }
+        } catch (error) {
+          console.error("Veritabanından veriler yüklenirken hata oluştu:", error);
         }
-      `}</style>
+      };
+
+      fetchTransactions();
       
-      <div className="bg-weather-animate"></div>
-
-      {/* YAĞMUR EFEKTİ */}
-      {displayType === 'rain' && particles.map(p => (
-        <div key={p.id} className="absolute bg-slate-400 rounded-full" 
-             style={{ left: p.left, top: p.top, width: p.size + 'px', height: p.size * 12 + 'px', opacity: p.opacity, animation: `fall-down ${p.duration}s linear infinite`, animationDelay: `${p.delay}s` }} />
-      ))}
-
-      {/* KAR EFEKTİ */}
-      {displayType === 'snow' && particles.map(p => (
-        <div key={p.id} className="absolute bg-white rounded-full shadow-md" 
-             style={{ left: p.left, top: p.top, width: (p.size + 2) + 'px', height: (p.size + 2) + 'px', opacity: p.opacity + 0.4, animation: `drift ${p.duration}s linear infinite`, animationDelay: `${p.delay}s` }} />
-      ))}
-
-      {/* BULUT EFEKTİ */}
-      {displayType === 'clouds' && (
-        <>
-          <div className="absolute top-10 left-10 w-96 h-40 bg-white/50 blur-3xl rounded-full" style={{ animation: 'float-cloud 20s ease-in-out infinite' }}></div>
-          <div className="absolute top-40 right-20 w-[30rem] h-60 bg-white/40 blur-3xl rounded-full" style={{ animation: 'float-cloud 25s ease-in-out infinite reverse' }}></div>
-        </>
-      )}
-
-      {/* AÇIK HAVA/GÜNEŞ EFEKTİ */}
-      {displayType === 'clear' && (
-        <>
-          <div className="absolute -top-20 -right-20 w-96 h-96 bg-amber-200/30 blur-3xl rounded-full" style={{ animation: 'float-cloud 15s ease-in-out infinite' }}></div>
-          <div className="absolute bottom-10 left-10 w-64 h-64 bg-orange-200/20 blur-3xl rounded-full" style={{ animation: 'float-cloud 18s ease-in-out infinite reverse' }}></div>
-        </>
-      )}
-
-      {/* HAVA DURUMU BİLGİ KUTUSU */}
-      {temp !== null && (
-        <div className="fixed bottom-6 right-6 z-50 bg-white/70 backdrop-blur-md border border-white/60 px-4 py-2 rounded-2xl shadow-xl flex items-center gap-3 pointer-events-auto transition-transform hover:scale-105">
-          <div className="flex flex-col">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{city?.name || 'BURSA'} {override !== 'auto' && '(Manuel)'}</span>
-            <span className="text-sm font-black text-slate-700">{temp}°C</span>
-          </div>
-          <span className="text-2xl drop-shadow-sm">{weatherIcons[displayType]}</span>
-        </div>
-      )}
-    </div>
-  );
-};
+      // Kategoriler şimdilik ortak alandan yüklenmeye devam edebilir
+      let savedCats = JSON.parse(localStorage.getItem('categories_shared'));
+      if (!savedCats || savedCats.length === 0) {
+        savedCats = DEFAULT_CATEGORIES;
+        localStorage.setItem('categories_shared', JSON.stringify(savedCats));
+      }
+      setCategories(savedCats);
+      
+      if (['admin', 'settings'].includes(activeTab) && currentUser.role !== 'admin') {
+        setActiveTab('dashboard');
+      }
+    }
+  }, [currentUser, activeTab]);
 
 const InteractiveDateClock = () => {
   const [time, setTime] = useState(new Date());
@@ -394,13 +316,13 @@ export default function App() {
   };
 
   // --- İŞLEMLER ---
-  const handleTransactionSubmit = async (e) => {
+ const handleTransactionSubmit = async (e) => {
     e.preventDefault();
     if (!formData.categoryId) return showAlert("Lütfen bir kategori seçiniz!");
 
     const selectedCat = categories.find(c => c.id === formData.categoryId);
     
-    // Gönderilecek Veriyi Hazırlama
+    // Form verisini hazırla (Düzenleme ise eski id korunur, yeni ise üretilir)
     const newTransaction = {
       ...formData,
       id: formData.id || Date.now().toString(),
@@ -408,7 +330,6 @@ export default function App() {
     };
 
     try {
-      // API'ye İstek Atma (MongoDB'ye Kayıt)
       const response = await fetch('/api/transaction', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -416,14 +337,13 @@ export default function App() {
       });
 
       if (response.ok) {
-        // Ekrandaki Listeyi Güncelle
         let updatedList = formData.id 
           ? transactions.map(t => t.id === formData.id ? newTransaction : t) 
           : [...transactions, newTransaction];
 
         setTransactions(updatedList);
         closeForm();
-        showAlert("Kayıt başarıyla buluta eklendi!");
+        showAlert(formData.id ? "Kayıt başarıyla güncellendi!" : "Kayıt başarıyla buluta eklendi!");
       }
     } catch (error) {
       showAlert("Buluta kaydedilirken bir hata oluştu!");
@@ -433,11 +353,26 @@ export default function App() {
 
 
   const handleDeleteTransaction = (id) => {
-    showConfirm('Bu kaydı silmek istediğinize emin misiniz?', () => {
-      const updatedList = transactions.filter(t => t.id !== id);
-      setTransactions(updatedList);
-      localStorage.setItem('transactions_shared', JSON.stringify(updatedList));
-      closeDialog();
+    showConfirm('Bu kaydı silmek istediğinize emin misiniz?', async () => {
+      try {
+        // API'ye DELETE isteği gönderiyoruz ve query string olarak id'yi geçiyoruz
+        const response = await fetch(`/api/transaction?id=${id}`, {
+          method: 'DELETE'
+        });
+
+        if (response.ok) {
+          // Başarılıysa arayüzdeki state'i de filtrele
+          const updatedList = transactions.filter(t => t.id !== id);
+          setTransactions(updatedList);
+          closeDialog();
+          setTimeout(() => showAlert("Kayıt veritabanından başarıyla silindi!"), 200);
+        } else {
+          showAlert("Kayıt silinirken bir sunucu hatası oluştu.");
+        }
+      } catch (error) {
+        console.error("Silme hatası:", error);
+        showAlert("Bağlantı hatası: Kayıt silinemedi.");
+      }
     });
   };
 
