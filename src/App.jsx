@@ -586,6 +586,26 @@ export default function App() {
     e.preventDefault();
     if (!formData.categoryId) return showAlert("Lütfen bir kategori seçiniz!");
 
+    // --- YENİ EKLENEN KONTROL BAŞLANGICI ---
+    // Seçilen tarihten "YYYY-MM" (Yıl-Ay) kısmını alıyoruz
+    const formYearMonth = formData.date.substring(0, 7);
+
+    // Aynı ayda, aynı kategoriye ait başka bir kayıt var mı kontrol ediyoruz
+    const isDuplicate = transactions.some((t) => {
+      // Eğer mevcut bir kaydı düzenliyorsak (id varsa), kendisini kontrole dahil etme
+      if (formData.id && t.id === formData.id) return false;
+
+      const tYearMonth = t.date ? t.date.substring(0, 7) : "";
+      return (
+        t.categoryId === formData.categoryId && tYearMonth === formYearMonth
+      );
+    });
+
+    if (isDuplicate) {
+      return showAlert("Bu ay için bu kategoride zaten bir kayıt mevcut!");
+    }
+    // --- YENİ EKLENEN KONTROL BİTİŞİ ---
+
     const selectedCat = categories.find((c) => c.id === formData.categoryId);
 
     const newTransaction = {
