@@ -634,11 +634,13 @@ export default function App() {
 
     const isDuplicate = transactions.some((t) => {
       // Eğer mevcut bir kaydı düzenliyorsak, kendisini mükerrer saymasını engelliyoruz
-      if (formData.id && t.id === formData.id) return false;
+      // NOT: Veritabanı ID'si (Sayı) ile form ID'si (Metin) arasındaki tip uyuşmazlığını önlemek için String() kullanıyoruz
+      if (formData.id && String(t.id) === String(formData.id)) return false;
 
       const tYearMonth = t.date ? t.date.substring(0, 7) : "";
       return (
-        t.categoryId === formData.categoryId && tYearMonth === formYearMonth
+        String(t.categoryId) === String(formData.categoryId) &&
+        tYearMonth === formYearMonth
       );
     });
 
@@ -647,7 +649,10 @@ export default function App() {
     }
     // --- KONTROL BİTİŞİ ---
 
-    const selectedCat = categories.find((c) => c.id === formData.categoryId);
+    // Kategori ID'si string'e çevrilmiş olarak aranmalı
+    const selectedCat = categories.find(
+      (c) => String(c.id) === String(formData.categoryId),
+    );
 
     const newTransaction = {
       ...formData,
@@ -664,7 +669,9 @@ export default function App() {
 
       if (response.ok) {
         let updatedList = formData.id
-          ? transactions.map((t) => (t.id === formData.id ? newTransaction : t))
+          ? transactions.map((t) =>
+              String(t.id) === String(formData.id) ? newTransaction : t,
+            )
           : [...transactions, newTransaction];
 
         setTransactions(updatedList);
@@ -684,7 +691,9 @@ export default function App() {
         error,
       );
       let updatedList = formData.id
-        ? transactions.map((t) => (t.id === formData.id ? newTransaction : t))
+        ? transactions.map((t) =>
+            String(t.id) === String(formData.id) ? newTransaction : t,
+          )
         : [...transactions, newTransaction];
 
       setTransactions(updatedList);
@@ -705,7 +714,9 @@ export default function App() {
         });
 
         if (response.ok) {
-          const updatedList = transactions.filter((t) => t.id !== id);
+          const updatedList = transactions.filter(
+            (t) => String(t.id) !== String(id),
+          );
           setTransactions(updatedList);
           closeDialog();
           setTimeout(
@@ -717,7 +728,9 @@ export default function App() {
         }
       } catch (error) {
         // API YOKSA LOKAL TEST İÇİN SİLME İŞLEMİ
-        const updatedList = transactions.filter((t) => t.id !== id);
+        const updatedList = transactions.filter(
+          (t) => String(t.id) !== String(id),
+        );
         setTransactions(updatedList);
         closeDialog();
         setTimeout(
@@ -764,7 +777,9 @@ export default function App() {
 
       if (response.ok) {
         let updatedCats = categoryForm.id
-          ? categories.map((c) => (c.id === categoryForm.id ? newCategory : c))
+          ? categories.map((c) =>
+              String(c.id) === String(categoryForm.id) ? newCategory : c,
+            )
           : [...categories, newCategory];
         setCategories(updatedCats);
         setCategoryForm({ id: null, name: "", type: "GİDER" });
@@ -779,7 +794,9 @@ export default function App() {
     } catch (error) {
       console.warn("Kategori API bulunamadı, yerel belleğe eklendi.", error);
       let updatedCats = categoryForm.id
-        ? categories.map((c) => (c.id === categoryForm.id ? newCategory : c))
+        ? categories.map((c) =>
+            String(c.id) === String(categoryForm.id) ? newCategory : c,
+          )
         : [...categories, newCategory];
       setCategories(updatedCats);
       setCategoryForm({ id: null, name: "", type: "GİDER" });
@@ -799,7 +816,9 @@ export default function App() {
         });
 
         if (response.ok) {
-          const updatedCats = categories.filter((c) => c.id !== id);
+          const updatedCats = categories.filter(
+            (c) => String(c.id) !== String(id),
+          );
           setCategories(updatedCats);
           closeDialog();
           setTimeout(() => showAlert("Kategori başarıyla silindi!"), 200);
@@ -807,7 +826,9 @@ export default function App() {
           throw new Error("API Sunucu Hatası");
         }
       } catch (error) {
-        const updatedCats = categories.filter((c) => c.id !== id);
+        const updatedCats = categories.filter(
+          (c) => String(c.id) !== String(id),
+        );
         setCategories(updatedCats);
         closeDialog();
         setTimeout(() => showAlert("Kategori silindi! (Yerel Test)"), 200);
@@ -2031,10 +2052,12 @@ export default function App() {
                       onClick={() =>
                         setFormData({ ...formData, categoryId: c.id })
                       }
-                      className={`px-3 py-2 rounded-xl text-sm font-bold transition-all border ${formData.categoryId === c.id ? (formData.type === "GELİR" ? "bg-green-100 border-green-500 text-green-700" : "bg-red-100 border-red-500 text-red-700") : "bg-white border-slate-200 text-slate-600 hover:border-indigo-300 hover:bg-slate-50"}`}
+                      className={`px-3 py-2 rounded-xl text-sm font-bold transition-all border ${String(formData.categoryId) === String(c.id) ? (formData.type === "GELİR" ? "bg-green-100 border-green-500 text-green-700" : "bg-red-100 border-red-500 text-red-700") : "bg-white border-slate-200 text-slate-600 hover:border-indigo-300 hover:bg-slate-50"}`}
                     >
                       <div className="flex items-center gap-1">
-                        {formData.categoryId === c.id && <Check size={14} />}{" "}
+                        {String(formData.categoryId) === String(c.id) && (
+                          <Check size={14} />
+                        )}{" "}
                         {c.name}
                       </div>
                     </button>
