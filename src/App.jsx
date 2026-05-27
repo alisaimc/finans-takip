@@ -392,6 +392,7 @@ export default function App() {
               id: freshUserData.id,
               username: freshUserData.username,
               role: freshUserData.role,
+              profilePhoto: freshUserData.profilePhoto, // <--- İŞTE EKLENEN HAYATİ SATIR
             });
           }
         }
@@ -413,7 +414,7 @@ export default function App() {
       );
       if (loggedInUser) {
         const found = localUsers.find((u) => u.id === loggedInUser.id);
-        if (found) setCurrentUser(loggedInUser);
+        if (found) setCurrentUser(found); // Yerel bellekte de güncel kalsın
       }
     }
   };
