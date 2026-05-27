@@ -229,6 +229,39 @@ const WeatherBackground = ({ city, override }) => {
     </div>
   );
 };
+const AppBackground = ({ city, override, systemBgColor, userBgImage }) => {
+  // 1. Öncelik: Kullanıcının kendi yüklediği kişisel arka plan
+  if (userBgImage) {
+    return (
+      <div className="fixed inset-0 pointer-events-none -z-20">
+        <img
+          src={userBgImage}
+          alt="bg"
+          className="w-full h-full object-cover opacity-90"
+        />
+        <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]"></div>
+      </div>
+    );
+  }
+
+  // 2. Öncelik: Admin'in seçtiği global renk teması
+  if (systemBgColor && systemBgColor !== "default") {
+    const bgClasses = {
+      gece: "bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900",
+      doga: "bg-gradient-to-br from-emerald-900 via-teal-950 to-green-900",
+      gunbatimi: "bg-gradient-to-br from-rose-900 via-red-950 to-orange-900",
+      karanlik: "bg-gradient-to-br from-gray-900 via-black to-gray-900",
+    };
+    return (
+      <div
+        className={`fixed inset-0 pointer-events-none -z-20 ${bgClasses[systemBgColor]}`}
+      ></div>
+    );
+  }
+
+  // 3. Öncelik: Hiçbiri yoksa varsayılan Hava Durumu animasyonu
+  return <WeatherBackground city={city} override={override} />;
+};
 
 const InteractiveDateClock = () => {
   const [time, setTime] = useState(new Date());
@@ -312,6 +345,7 @@ export default function App() {
     CITIES.find((c) => c.name === "Bursa"),
   );
   const [weatherOverride, setWeatherOverride] = useState("auto");
+  const [systemBgColor, setSystemBgColor] = useState("default");
 
   const [transactions, setTransactions] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -392,7 +426,8 @@ export default function App() {
               id: freshUserData.id,
               username: freshUserData.username,
               role: freshUserData.role,
-              profilePhoto: freshUserData.profilePhoto, // <--- İŞTE EKLENEN HAYATİ SATIR
+              profilePhoto: freshUserData.profilePhoto,
+              backgroundImage: freshUserData.backgroundImage, // <--- İŞTE EKLENEN HAYATİ SATIR
             });
           }
         }
@@ -421,6 +456,8 @@ export default function App() {
 
   // --- İLK YÜKLEME VE SİSTEM AYARLARI ---
   useEffect(() => {
+    const savedBg = localStorage.getItem("app_system_bg_color");
+    if (savedBg) setSystemBgColor(savedBg);
     const savedCity = localStorage.getItem("app_system_city");
     if (savedCity) {
       const foundCity = CITIES.find((c) => c.name === savedCity);
@@ -937,6 +974,76 @@ export default function App() {
       showAlert("Fotoğraf yüklenirken bir hata oluştu.");
     }
   };
+  // --- KİŞİSEL ARKA PLAN SIKIŞTIRMA VE YÜKLEME ---
+  const compressBackgroundImage = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const MAX_WIDTH = 1920;
+          const MAX_HEIGHT = 1080;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.6); // %60 kalite (Boyutu çok küçültür)
+          resolve(dataUrl);
+        };
+      };
+    });
+  };
+
+  const handleBgImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024)
+      return showAlert("Lütfen 10MB'dan daha küçük bir fotoğraf seçin.");
+
+    try {
+      const compressedBase64 = await compressBackgroundImage(file);
+      const targetUser = appUsers.find((u) => u.id === currentUser.id);
+      const updatedUser = { ...targetUser, backgroundImage: compressedBase64 };
+
+      const response = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedUser),
+      });
+
+      if (response.ok) {
+        await fetchUsers();
+        const newSession = {
+          ...currentUser,
+          backgroundImage: compressedBase64,
+        };
+        setCurrentUser(newSession);
+        localStorage.setItem("app_currentUser_v2", JSON.stringify(newSession));
+        showAlert("Kişisel arka plan resminiz başarıyla güncellendi!");
+      }
+    } catch (error) {
+      showAlert("Arka plan yüklenirken bir hata oluştu.");
+    }
+  };
   const handleProfileUpdate = async (e) => {
     e.preventDefault();
     const targetUser = appUsers.find((u) => u.id === currentUser.id);
@@ -1145,8 +1252,12 @@ export default function App() {
   if (!currentUser) {
     return (
       <div className="min-h-screen relative flex items-center justify-center p-4">
-        <WeatherBackground city={systemCity} override={weatherOverride} />
-
+        <AppBackground
+          city={systemCity}
+          override={weatherOverride}
+          systemBgColor={systemBgColor}
+          userBgImage={currentUser?.backgroundImage}
+        />
         <div className="bg-white/95 p-8 sm:p-10 rounded-3xl shadow-2xl w-full max-w-md border border-white/50 backdrop-blur-xl relative overflow-hidden z-10">
           <div className="absolute -right-20 -top-20 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
           <div className="flex items-center justify-center w-20 h-20 bg-gradient-to-br from-indigo-100 to-violet-100 text-indigo-600 rounded-2xl mx-auto mb-6 shadow-inner transform -rotate-6">
@@ -1250,8 +1361,12 @@ export default function App() {
 
   return (
     <div className="min-h-screen relative text-slate-800 font-sans pb-20">
-      <WeatherBackground city={systemCity} override={weatherOverride} />
-
+      <AppBackground
+        city={systemCity}
+        override={weatherOverride}
+        systemBgColor={systemBgColor}
+        userBgImage={currentUser?.backgroundImage}
+      />
       <header className="bg-white/90 backdrop-blur-md border-b border-slate-200 sticky top-0 z-40 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3 text-indigo-600">
@@ -1908,6 +2023,28 @@ export default function App() {
                     <option value="snow">Karlı</option>
                   </select>
                 </div>
+                <div className="flex-1 w-full md:w-1/3">
+                  <label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">
+                    Sistem Teması (Global)
+                  </label>
+                  <select
+                    value={systemBgColor}
+                    onChange={(e) => {
+                      setSystemBgColor(e.target.value);
+                      localStorage.setItem(
+                        "app_system_bg_color",
+                        e.target.value,
+                      );
+                    }}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-xl outline-none focus:border-indigo-500 font-medium bg-slate-50"
+                  >
+                    <option value="default">Hava Durumu (Varsayılan)</option>
+                    <option value="gece">Gece Mavisi</option>
+                    <option value="doga">Doğa Yeşili</option>
+                    <option value="gunbatimi">Gün Batımı</option>
+                    <option value="karanlik">Koyu Tema</option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -2140,7 +2277,55 @@ export default function App() {
               </span>
             </div>
             {/* ----------------------------------- */}
-
+            <div className="p-5 bg-slate-50/50 border-b border-slate-100 flex flex-col items-center">
+              <h4 className="font-bold text-sm text-slate-700 mb-3 flex items-center gap-2">
+                <MapPin size={16} /> Kişisel Arka Plan
+              </h4>
+              <div className="flex gap-3 w-full">
+                <label className="flex-1 bg-indigo-100 text-indigo-700 py-2.5 rounded-xl font-bold text-center hover:bg-indigo-200 transition-colors cursor-pointer text-sm">
+                  Resim Yükle
+                  <input
+                    type="file"
+                    accept="image/jpeg, image/png, image/webp"
+                    className="hidden"
+                    onChange={handleBgImageUpload}
+                  />
+                </label>
+                {currentUser.backgroundImage && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const targetUser = appUsers.find(
+                        (u) => u.id === currentUser.id,
+                      );
+                      const updatedUser = {
+                        ...targetUser,
+                        backgroundImage: null,
+                      };
+                      await fetch("/api/users", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(updatedUser),
+                      });
+                      await fetchUsers();
+                      const newSession = {
+                        ...currentUser,
+                        backgroundImage: null,
+                      };
+                      setCurrentUser(newSession);
+                      localStorage.setItem(
+                        "app_currentUser_v2",
+                        JSON.stringify(newSession),
+                      );
+                      showAlert("Kişisel arka plan kaldırıldı.");
+                    }}
+                    className="px-4 bg-red-100 text-red-600 rounded-xl hover:bg-red-200 transition-colors flex items-center justify-center"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                )}
+              </div>
+            </div>
             <form onSubmit={handleProfileUpdate} className="p-6 bg-slate-50/30">
               <h4 className="font-bold text-sm text-slate-700 mb-4 flex items-center gap-2">
                 <Key size={16} /> Şifre Değiştir
