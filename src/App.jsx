@@ -856,19 +856,59 @@ export default function App() {
     setCategories([]);
     setActiveTab("dashboard");
   };
+  // --- FOTOĞRAF SIKIŞTIRMA VE YÜKLEME ---
+  const compressImage = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const MAX_WIDTH = 800; // Profil resmi için fazlasıyla yeterli çözünürlük
+          const MAX_HEIGHT = 800;
+          let width = img.width;
+          let height = img.height;
+
+          // Oranları koruyarak boyutları küçült
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Resmi JPEG formatında %70 kaliteyle sıkıştır (Boyutu inanılmaz küçültür)
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+          resolve(dataUrl);
+        };
+        img.onerror = (error) => reject(error);
+      };
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Sınır 10MB olarak güncellendi
-    if (file.size > 10 * 1024 * 1024) {
-      return showAlert("Lütfen 10MB'dan daha küçük bir fotoğraf seçin.");
-    }
-
     try {
-      const base64 = await convertToBase64(file);
+      // Fotoğrafı sunucuya göndermeden önce cihazda sıkıştır
+      const compressedBase64 = await compressImage(file);
+
       const targetUser = appUsers.find((u) => u.id === currentUser.id);
-      const updatedUser = { ...targetUser, profilePhoto: base64 };
+      const updatedUser = { ...targetUser, profilePhoto: compressedBase64 };
 
       const response = await fetch("/api/users", {
         method: "POST",
@@ -877,9 +917,9 @@ export default function App() {
       });
 
       if (response.ok) {
-        await fetchUsers(); // Veritabanından listeyi tazele
-        const newSession = { ...currentUser, profilePhoto: base64 };
-        setCurrentUser(newSession); // Ekranda anında değişmesi için
+        await fetchUsers();
+        const newSession = { ...currentUser, profilePhoto: compressedBase64 };
+        setCurrentUser(newSession);
         localStorage.setItem("app_currentUser_v2", JSON.stringify(newSession));
         showAlert("Profil fotoğrafınız başarıyla güncellendi!");
       } else {
