@@ -424,7 +424,14 @@ export default function App() {
               role: freshUserData.role,
               profilePhoto: freshUserData.profilePhoto,
               backgroundImage: freshUserData.backgroundImage,
+              systemBgColor: freshUserData.systemBgColor || "default", // YENİ
+              weatherOverride: freshUserData.weatherOverride || "auto", // YENİ
             });
+            // Ekrana anında uygula
+            if (freshUserData.systemBgColor)
+              setSystemBgColor(freshUserData.systemBgColor);
+            if (freshUserData.weatherOverride)
+              setWeatherOverride(freshUserData.weatherOverride);
           }
         }
       } else {
@@ -876,8 +883,12 @@ export default function App() {
         role: user.role,
         profilePhoto: user.profilePhoto,
         backgroundImage: user.backgroundImage,
+        systemBgColor: user.systemBgColor || "default", // YENİ
+        weatherOverride: user.weatherOverride || "auto", // YENİ
       };
       setCurrentUser(sessionUser);
+      setSystemBgColor(sessionUser.systemBgColor); // Ekrana uygula
+      setWeatherOverride(sessionUser.weatherOverride); // Ekrana uygula
       localStorage.setItem("app_currentUser_v2", JSON.stringify(sessionUser));
     } else {
       showAlert("Kullanıcı adı veya şifre hatalı!");
@@ -1190,18 +1201,55 @@ export default function App() {
     }
   };
 
-  const handleWeatherOverrideChange = (e) => {
+  const handleWeatherOverrideChange = async (e) => {
     const mode = e.target.value;
     setWeatherOverride(mode);
-    localStorage.setItem("app_weather_override", mode);
+
+    // Veritabanına kullanıcının tercihini kaydet
+    const targetUser = appUsers.find((u) => u.id === currentUser.id);
+    const updatedUser = { ...targetUser, weatherOverride: mode };
+    try {
+      await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedUser),
+      });
+      const newSession = { ...currentUser, weatherOverride: mode };
+      setCurrentUser(newSession);
+      localStorage.setItem("app_currentUser_v2", JSON.stringify(newSession));
+    } catch (err) {}
+
     const modeNames = {
-      auto: "Otomatik (Şehre Göre)",
+      auto: "Otomatik",
       clear: "Güneşli / Açık",
       rain: "Yağmurlu",
       clouds: "Bulutlu",
       snow: "Karlı",
     };
-    showAlert(`Hava durumu efekti "${modeNames[mode]}" olarak güncellendi.`);
+    showAlert(
+      `Hava durumu efekti "${modeNames[mode]}" olarak hesabınıza kaydedildi.`,
+    );
+  };
+
+  const handleThemeChange = async (e) => {
+    const newTheme = e.target.value;
+    setSystemBgColor(newTheme);
+
+    // Veritabanına kullanıcının temasını kaydet
+    const targetUser = appUsers.find((u) => u.id === currentUser.id);
+    const updatedUser = { ...targetUser, systemBgColor: newTheme };
+    try {
+      await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedUser),
+      });
+      const newSession = { ...currentUser, systemBgColor: newTheme };
+      setCurrentUser(newSession);
+      localStorage.setItem("app_currentUser_v2", JSON.stringify(newSession));
+    } catch (err) {}
+
+    showAlert("Tema tercihiniz hesabınıza kaydedildi!");
   };
 
   // --- HELPERS ---
@@ -2005,8 +2053,8 @@ export default function App() {
                     Arka Plan Efekti
                   </label>
                   <select
-                    value={weatherOverride}
-                    onChange={handleWeatherOverrideChange}
+                    value={systemBgColor}
+                    onChange={handleThemeChange}
                     className="w-full px-4 py-2 border border-slate-300 rounded-xl outline-none focus:border-indigo-500 font-medium bg-slate-50"
                   >
                     <option value="auto">Otomatik (Gerçek Zamanlı)</option>
