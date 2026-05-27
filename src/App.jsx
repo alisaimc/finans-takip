@@ -605,6 +605,7 @@ export default function App() {
             ...t,
             id: `copied-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 9)}`,
             date: `${selectedYear}-${selectedMonth}-${String(adjustedDay).padStart(2, "0")}`,
+            createdBy: currentUser.id, // Kopyalanan kayıtlara da Foreign Key ekleyelim
           };
         });
 
@@ -645,6 +646,7 @@ export default function App() {
       ...formData,
       id: formData.id || Date.now().toString(),
       categoryName: selectedCat ? selectedCat.name : formData.categoryId,
+      createdBy: currentUser.id, // <--- İŞTE EKLENEN FOREIGN KEY SATIRI
     };
 
     try {
