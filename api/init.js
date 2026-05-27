@@ -1,10 +1,9 @@
-// pages/api/init.js
 import clientPromise from '../lib/mongodb.js';
 
 export default async function handler(req, res) {
   const client = await clientPromise;
-  // Burası 'finans_db' olmalı
-  const col = client.db('finans_db').collection('users'); 
+  // BURASI DÜZELTİLDİ: 'finans' yerine 'finans_db' yapıldı
+  const col = client.db('finans_db').collection('users');
   const admin = { id: 'admin_1', username: 'admin', password: '123', role: 'admin' };
   
   await col.updateOne({ id: 'admin_1' }, { $setOnInsert: admin }, { upsert: true });
