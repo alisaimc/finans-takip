@@ -72,7 +72,8 @@ const CITIES = [
   { name: "İzmir", lat: 38.4192, lon: 27.1287 },
 ];
 
-const WeatherBackground = ({ city, override }) => {
+// --- HAVA DURUMU VE ARKA PLAN MOTORU ---
+const WeatherBackground = ({ city, override, systemBgColor, userBgImage }) => {
   const [weatherData, setWeatherData] = useState({ type: "clear", temp: null });
   const [particles, setParticles] = useState([]);
 
@@ -147,72 +148,100 @@ const WeatherBackground = ({ city, override }) => {
         }
       `}</style>
 
-      <div className="bg-weather-animate"></div>
-
-      {displayType === "rain" &&
-        particles.map((p) => (
-          <div
-            key={p.id}
-            className="absolute bg-slate-400 rounded-full"
-            style={{
-              left: p.left,
-              top: p.top,
-              width: p.size + "px",
-              height: p.size * 12 + "px",
-              opacity: p.opacity,
-              animation: `fall-down ${p.duration}s linear infinite`,
-              animationDelay: `${p.delay}s`,
-            }}
+      {/* 1. KATMAN: ZEMİN (FOTOĞRAF VEYA SİSTEM RENGİ VEYA HAVA DURUMU RENGİ) */}
+      {userBgImage ? (
+        <div className="absolute inset-0">
+          <img
+            src={userBgImage}
+            alt="bg"
+            className="w-full h-full object-cover"
           />
-        ))}
-
-      {displayType === "snow" &&
-        particles.map((p) => (
-          <div
-            key={p.id}
-            className="absolute bg-white rounded-full shadow-md"
-            style={{
-              left: p.left,
-              top: p.top,
-              width: p.size + 2 + "px",
-              height: p.size + 2 + "px",
-              opacity: p.opacity + 0.4,
-              animation: `drift ${p.duration}s linear infinite`,
-              animationDelay: `${p.delay}s`,
-            }}
-          />
-        ))}
-
-      {displayType === "clouds" && (
-        <>
-          <div
-            className="absolute top-10 left-10 w-96 h-40 bg-white/50 blur-3xl rounded-full"
-            style={{ animation: "float-cloud 20s ease-in-out infinite" }}
-          ></div>
-          <div
-            className="absolute top-40 right-20 w-[30rem] h-60 bg-white/40 blur-3xl rounded-full"
-            style={{
-              animation: "float-cloud 25s ease-in-out infinite reverse",
-            }}
-          ></div>
-        </>
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
+        </div>
+      ) : systemBgColor && systemBgColor !== "default" ? (
+        <div
+          className={`absolute inset-0 bg-gradient-to-br ${
+            systemBgColor === "gece"
+              ? "from-slate-900 via-indigo-950 to-slate-900"
+              : systemBgColor === "doga"
+                ? "from-emerald-900 via-teal-950 to-green-900"
+                : systemBgColor === "gunbatimi"
+                  ? "from-rose-900 via-red-950 to-orange-900"
+                  : "from-gray-900 via-black to-gray-900"
+          }`}
+        ></div>
+      ) : (
+        <div className="bg-weather-animate"></div>
       )}
 
-      {displayType === "clear" && (
-        <>
-          <div
-            className="absolute -top-20 -right-20 w-96 h-96 bg-amber-200/30 blur-3xl rounded-full"
-            style={{ animation: "float-cloud 15s ease-in-out infinite" }}
-          ></div>
-          <div
-            className="absolute bottom-10 left-10 w-64 h-64 bg-orange-200/20 blur-3xl rounded-full"
-            style={{
-              animation: "float-cloud 18s ease-in-out infinite reverse",
-            }}
-          ></div>
-        </>
-      )}
+      {/* 2. KATMAN: HAVA DURUMU EFEKTLERİ (HER ZAMAN GÖRÜNÜR) */}
+      <div className="absolute inset-0 z-0">
+        {displayType === "rain" &&
+          particles.map((p) => (
+            <div
+              key={p.id}
+              className="absolute bg-slate-400 rounded-full"
+              style={{
+                left: p.left,
+                top: p.top,
+                width: p.size + "px",
+                height: p.size * 12 + "px",
+                opacity: p.opacity,
+                animation: `fall-down ${p.duration}s linear infinite`,
+                animationDelay: `${p.delay}s`,
+              }}
+            />
+          ))}
 
+        {displayType === "snow" &&
+          particles.map((p) => (
+            <div
+              key={p.id}
+              className="absolute bg-white rounded-full shadow-md"
+              style={{
+                left: p.left,
+                top: p.top,
+                width: p.size + 2 + "px",
+                height: p.size + 2 + "px",
+                opacity: p.opacity + 0.4,
+                animation: `drift ${p.duration}s linear infinite`,
+                animationDelay: `${p.delay}s`,
+              }}
+            />
+          ))}
+
+        {displayType === "clouds" && (
+          <>
+            <div
+              className="absolute top-10 left-10 w-96 h-40 bg-white/40 blur-3xl rounded-full"
+              style={{ animation: "float-cloud 20s ease-in-out infinite" }}
+            ></div>
+            <div
+              className="absolute top-40 right-20 w-[30rem] h-60 bg-white/30 blur-3xl rounded-full"
+              style={{
+                animation: "float-cloud 25s ease-in-out infinite reverse",
+              }}
+            ></div>
+          </>
+        )}
+
+        {displayType === "clear" && (
+          <>
+            <div
+              className="absolute -top-20 -right-20 w-96 h-96 bg-amber-200/20 blur-3xl rounded-full"
+              style={{ animation: "float-cloud 15s ease-in-out infinite" }}
+            ></div>
+            <div
+              className="absolute bottom-10 left-10 w-64 h-64 bg-orange-200/10 blur-3xl rounded-full"
+              style={{
+                animation: "float-cloud 18s ease-in-out infinite reverse",
+              }}
+            ></div>
+          </>
+        )}
+      </div>
+
+      {/* HAVA DURUMU KARTI */}
       {temp !== null && (
         <div className="fixed bottom-6 right-6 z-50 bg-white/70 backdrop-blur-md border border-white/60 px-4 py-2 rounded-2xl shadow-xl flex items-center gap-3 pointer-events-auto transition-transform hover:scale-105">
           <div className="flex flex-col">
@@ -228,39 +257,6 @@ const WeatherBackground = ({ city, override }) => {
       )}
     </div>
   );
-};
-const AppBackground = ({ city, override, systemBgColor, userBgImage }) => {
-  // 1. Öncelik: Kullanıcının kendi yüklediği kişisel arka plan
-  if (userBgImage) {
-    return (
-      <div className="fixed inset-0 pointer-events-none -z-20">
-        <img
-          src={userBgImage}
-          alt="bg"
-          className="w-full h-full object-cover opacity-90"
-        />
-        <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]"></div>
-      </div>
-    );
-  }
-
-  // 2. Öncelik: Admin'in seçtiği global renk teması
-  if (systemBgColor && systemBgColor !== "default") {
-    const bgClasses = {
-      gece: "bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900",
-      doga: "bg-gradient-to-br from-emerald-900 via-teal-950 to-green-900",
-      gunbatimi: "bg-gradient-to-br from-rose-900 via-red-950 to-orange-900",
-      karanlik: "bg-gradient-to-br from-gray-900 via-black to-gray-900",
-    };
-    return (
-      <div
-        className={`fixed inset-0 pointer-events-none -z-20 ${bgClasses[systemBgColor]}`}
-      ></div>
-    );
-  }
-
-  // 3. Öncelik: Hiçbiri yoksa varsayılan Hava Durumu animasyonu
-  return <WeatherBackground city={city} override={override} />;
 };
 
 const InteractiveDateClock = () => {
@@ -427,7 +423,7 @@ export default function App() {
               username: freshUserData.username,
               role: freshUserData.role,
               profilePhoto: freshUserData.profilePhoto,
-              backgroundImage: freshUserData.backgroundImage, // <--- İŞTE EKLENEN HAYATİ SATIR
+              backgroundImage: freshUserData.backgroundImage,
             });
           }
         }
@@ -643,7 +639,7 @@ export default function App() {
             ...t,
             id: `copied-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 9)}`,
             date: `${selectedYear}-${selectedMonth}-${String(adjustedDay).padStart(2, "0")}`,
-            createdBy: currentUser.id, // Kopyalanan kayıtlara da Foreign Key ekleyelim
+            createdBy: currentUser.id,
           };
         });
 
@@ -684,7 +680,7 @@ export default function App() {
       ...formData,
       id: formData.id || Date.now().toString(),
       categoryName: selectedCat ? selectedCat.name : formData.categoryId,
-      createdBy: currentUser.id, // <--- İŞTE EKLENEN FOREIGN KEY SATIRI
+      createdBy: currentUser.id,
     };
 
     try {
@@ -879,6 +875,7 @@ export default function App() {
         username: user.username,
         role: user.role,
         profilePhoto: user.profilePhoto,
+        backgroundImage: user.backgroundImage,
       };
       setCurrentUser(sessionUser);
       localStorage.setItem("app_currentUser_v2", JSON.stringify(sessionUser));
@@ -894,6 +891,7 @@ export default function App() {
     setCategories([]);
     setActiveTab("dashboard");
   };
+
   // --- FOTOĞRAF SIKIŞTIRMA VE AKILLI KIRPMA (CENTER CROP) ---
   const compressImage = (file) => {
     return new Promise((resolve, reject) => {
@@ -904,23 +902,19 @@ export default function App() {
         img.src = event.target.result;
         img.onload = () => {
           const canvas = document.createElement("canvas");
-          const MAX_SIZE = 800; // Profil resmi için kusursuz kare boyutu
+          const MAX_SIZE = 800;
 
           const width = img.width;
           const height = img.height;
 
-          // 1. Resmi tam kare (1:1) yapmak için merkez hesaplaması
-          // En kısa kenarı bulup, resmi o boyutta bir kareye göre ortalıyoruz
           const size = Math.min(width, height);
-          const startX = (width - size) / 2; // Yatayda tam ortala
-          const startY = (height - size) / 2; // Dikeyde tam ortala
+          const startX = (width - size) / 2;
+          const startY = (height - size) / 2;
 
-          // 2. Tuvalimizi (Canvas) mükemmel kare (800x800) olarak ayarlıyoruz
           canvas.width = MAX_SIZE;
           canvas.height = MAX_SIZE;
           const ctx = canvas.getContext("2d");
 
-          // 3. Resmin sadece hesapladığımız o kusursuz orta karesini alıp çiziyoruz
           ctx.drawImage(
             img,
             startX,
@@ -933,7 +927,6 @@ export default function App() {
             MAX_SIZE,
           );
 
-          // 4. Resmi JPEG formatında %80 kaliteyle sıkıştırıyoruz (Hem net hem küçük boyutlu)
           const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
           resolve(dataUrl);
         };
@@ -948,7 +941,6 @@ export default function App() {
     if (!file) return;
 
     try {
-      // Fotoğrafı sunucuya göndermeden önce cihazda sıkıştır
       const compressedBase64 = await compressImage(file);
 
       const targetUser = appUsers.find((u) => u.id === currentUser.id);
@@ -974,6 +966,7 @@ export default function App() {
       showAlert("Fotoğraf yüklenirken bir hata oluştu.");
     }
   };
+
   // --- KİŞİSEL ARKA PLAN SIKIŞTIRMA VE YÜKLEME ---
   const compressBackgroundImage = (file) => {
     return new Promise((resolve, reject) => {
@@ -1006,7 +999,7 @@ export default function App() {
           const ctx = canvas.getContext("2d");
           ctx.drawImage(img, 0, 0, width, height);
 
-          const dataUrl = canvas.toDataURL("image/jpeg", 0.6); // %60 kalite (Boyutu çok küçültür)
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.6);
           resolve(dataUrl);
         };
       };
@@ -1044,6 +1037,7 @@ export default function App() {
       showAlert("Arka plan yüklenirken bir hata oluştu.");
     }
   };
+
   const handleProfileUpdate = async (e) => {
     e.preventDefault();
     const targetUser = appUsers.find((u) => u.id === currentUser.id);
@@ -1252,11 +1246,10 @@ export default function App() {
   if (!currentUser) {
     return (
       <div className="min-h-screen relative flex items-center justify-center p-4">
-        <AppBackground
+        <WeatherBackground
           city={systemCity}
           override={weatherOverride}
           systemBgColor={systemBgColor}
-          userBgImage={currentUser?.backgroundImage}
         />
         <div className="bg-white/95 p-8 sm:p-10 rounded-3xl shadow-2xl w-full max-w-md border border-white/50 backdrop-blur-xl relative overflow-hidden z-10">
           <div className="absolute -right-20 -top-20 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -1361,7 +1354,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen relative text-slate-800 font-sans pb-20">
-      <AppBackground
+      <WeatherBackground
         city={systemCity}
         override={weatherOverride}
         systemBgColor={systemBgColor}
@@ -2277,6 +2270,7 @@ export default function App() {
               </span>
             </div>
             {/* ----------------------------------- */}
+
             <div className="p-5 bg-slate-50/50 border-b border-slate-100 flex flex-col items-center">
               <h4 className="font-bold text-sm text-slate-700 mb-3 flex items-center gap-2">
                 <MapPin size={16} /> Kişisel Arka Plan
@@ -2326,6 +2320,7 @@ export default function App() {
                 )}
               </div>
             </div>
+
             <form onSubmit={handleProfileUpdate} className="p-6 bg-slate-50/30">
               <h4 className="font-bold text-sm text-slate-700 mb-4 flex items-center gap-2">
                 <Key size={16} /> Şifre Değiştir
