@@ -374,7 +374,51 @@ export default function App() {
   const closeDialog = () =>
     setDialog({ isOpen: false, type: "alert", message: "", onConfirm: null });
 
-  // --- İLK YÜKLEME VE KULLANICI KONTROLÜ ---
+  // --- KULLANICILARI VERİTABANINDAN ÇEKME FONKSİYONU ---
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch("/api/users");
+      if (response.ok) {
+        const data = await response.json();
+        setAppUsers(data);
+        // Eğer giriş yapmış bir kullanıcı varsa verisini de veritabanından tazeleyelim
+        const loggedInUser = JSON.parse(
+          localStorage.getItem("app_currentUser_v2"),
+        );
+        if (loggedInUser) {
+          const freshUserData = data.find((u) => u.id === loggedInUser.id);
+          if (freshUserData) {
+            setCurrentUser({
+              id: freshUserData.id,
+              username: freshUserData.username,
+              role: freshUserData.role,
+            });
+          }
+        }
+      } else {
+        throw new Error("API Hatası");
+      }
+    } catch (error) {
+      console.error(
+        "Kullanıcı API'sine ulaşılamadı. Test ortamı verisi kullanılıyor...",
+        error,
+      );
+      const localUsers = JSON.parse(localStorage.getItem("app_users_v2")) || [
+        { id: "admin_1", username: "admin", password: "123", role: "admin" },
+      ];
+      setAppUsers(localUsers);
+
+      const loggedInUser = JSON.parse(
+        localStorage.getItem("app_currentUser_v2"),
+      );
+      if (loggedInUser) {
+        const found = localUsers.find((u) => u.id === loggedInUser.id);
+        if (found) setCurrentUser(loggedInUser);
+      }
+    }
+  };
+
+  // --- İLK YÜKLEME VE SİSTEM AYARLARI ---
   useEffect(() => {
     const savedCity = localStorage.getItem("app_system_city");
     if (savedCity) {
@@ -385,55 +429,8 @@ export default function App() {
     const savedOverride = localStorage.getItem("app_weather_override");
     if (savedOverride) setWeatherOverride(savedOverride);
 
-    let savedUsers = JSON.parse(localStorage.getItem("app_users_v2"));
-    if (!savedUsers) {
-      const oldUsers = JSON.parse(localStorage.getItem("users"));
-      if (oldUsers && oldUsers.length > 0) {
-        savedUsers = oldUsers.map((u, i) => ({
-          id: `mig_${i}`,
-          username: u,
-          password: "123",
-          role: i === 0 ? "admin" : "user",
-        }));
-      } else {
-        savedUsers = [
-          { id: "admin_1", username: "admin", password: "123", role: "admin" },
-        ];
-      }
-      localStorage.setItem("app_users_v2", JSON.stringify(savedUsers));
-    }
-    setAppUsers(savedUsers);
-
-    const loggedInUser = JSON.parse(localStorage.getItem("app_currentUser_v2"));
-    if (loggedInUser) {
-      const freshUserData = savedUsers.find((u) => u.id === loggedInUser.id);
-      if (freshUserData) {
-        setCurrentUser({
-          id: freshUserData.id,
-          username: freshUserData.username,
-          role: freshUserData.role,
-        });
-      } else {
-        localStorage.removeItem("app_currentUser_v2");
-      }
-    } else {
-      const oldCurr = localStorage.getItem("currentUser");
-      if (oldCurr) {
-        const found = savedUsers.find((u) => u.username === oldCurr);
-        if (found) {
-          const sessionUser = {
-            id: found.id,
-            username: found.username,
-            role: found.role,
-          };
-          setCurrentUser(sessionUser);
-          localStorage.setItem(
-            "app_currentUser_v2",
-            JSON.stringify(sessionUser),
-          );
-        }
-      }
-    }
+    // Kullanıcıları yükle
+    fetchUsers();
   }, []);
 
   // --- VERİTABANINDAN VERİLERİ ÇEKME EFEKTİ ---
@@ -446,14 +443,12 @@ export default function App() {
             const data = await response.json();
             setTransactions(data);
           } else {
-            // API yoksa hataya düşürüp lokal testi tetikliyoruz.
             throw new Error("API Bulunamadı");
           }
         } catch (error) {
           console.error(
             "API'ye ulaşılamadı. Test ortamı için veri bekleniyor...",
           );
-          // Canvas test ortamında uygulamanın boş kalmaması için lokal depodan deniyoruz
           const localData =
             JSON.parse(localStorage.getItem("app_test_transactions")) || [];
           setTransactions(localData);
@@ -471,7 +466,7 @@ export default function App() {
           }
         } catch (error) {
           console.error(
-            "Kategori API'ye ulaşılamadı. Test ortamı için yerel veri kullanılıyor...",
+            "Kategori API'ye ulaşılamadı. Yerel veri kullanılıyor...",
           );
           let savedCats = JSON.parse(
             localStorage.getItem("app_test_categories"),
@@ -499,7 +494,7 @@ export default function App() {
     }
   }, [currentUser, activeTab]);
 
-  // --- EKLENEN FALLBACK TEST LOKAL DEPO GÜNCELLEMESİ (Sadece Canvas testleri için) ---
+  // --- LOCAL FALLBACK TEST GÜNCELLEMELERİ ---
   useEffect(() => {
     if (transactions.length > 0) {
       localStorage.setItem(
@@ -564,7 +559,7 @@ export default function App() {
     });
   }, [transactions, selectedYear]);
 
-  // --- KOPYALAMA ---
+  // --- KOPYALAMA MANTIĞI ---
   const { prevMonthStr, prevYearStr } = useMemo(() => {
     let m = parseInt(selectedMonth) - 1;
     let y = parseInt(selectedYear);
@@ -629,14 +624,9 @@ export default function App() {
     e.preventDefault();
     if (!formData.categoryId) return showAlert("Lütfen bir kategori seçiniz!");
 
-    // --- YENİ EKLENEN KONTROL MANTIĞI: AYDA BİR KATEGORİ KONTROLÜ ---
     const formYearMonth = formData.date.substring(0, 7);
-
     const isDuplicate = transactions.some((t) => {
-      // Eğer mevcut bir kaydı düzenliyorsak, kendisini mükerrer saymasını engelliyoruz
-      // NOT: Veritabanı ID'si (Sayı) ile form ID'si (Metin) arasındaki tip uyuşmazlığını önlemek için String() kullanıyoruz
       if (formData.id && String(t.id) === String(formData.id)) return false;
-
       const tYearMonth = t.date ? t.date.substring(0, 7) : "";
       return (
         String(t.categoryId) === String(formData.categoryId) &&
@@ -647,13 +637,10 @@ export default function App() {
     if (isDuplicate) {
       return showAlert("Bu ay için bu kategoride zaten bir kayıt mevcut!");
     }
-    // --- KONTROL BİTİŞİ ---
 
-    // Kategori ID'si string'e çevrilmiş olarak aranmalı
     const selectedCat = categories.find(
       (c) => String(c.id) === String(formData.categoryId),
     );
-
     const newTransaction = {
       ...formData,
       id: formData.id || Date.now().toString(),
@@ -685,11 +672,7 @@ export default function App() {
         throw new Error("API Hatası");
       }
     } catch (error) {
-      // API BAĞLANTISI YOKSA LOKAL STATE GÜNCELLEMESİ (Canvasta test edebilmek için)
-      console.warn(
-        "API bulunamadı, kayıt yerel belleğe eklendi. Kontroller aktif.",
-        error,
-      );
+      console.warn("API bulunamadı, kayıt yerel belleğe eklendi.", error);
       let updatedList = formData.id
         ? transactions.map((t) =>
             String(t.id) === String(formData.id) ? newTransaction : t,
@@ -712,7 +695,6 @@ export default function App() {
         const response = await fetch(`/api/transaction?id=${id}`, {
           method: "DELETE",
         });
-
         if (response.ok) {
           const updatedList = transactions.filter(
             (t) => String(t.id) !== String(id),
@@ -727,7 +709,6 @@ export default function App() {
           throw new Error("API Sunucu Hatası");
         }
       } catch (error) {
-        // API YOKSA LOKAL TEST İÇİN SİLME İŞLEMİ
         const updatedList = transactions.filter(
           (t) => String(t.id) !== String(id),
         );
@@ -814,7 +795,6 @@ export default function App() {
         const response = await fetch(`/api/category?id=${id}`, {
           method: "DELETE",
         });
-
         if (response.ok) {
           const updatedCats = categories.filter(
             (c) => String(c.id) !== String(id),
@@ -874,26 +854,48 @@ export default function App() {
     setActiveTab("dashboard");
   };
 
-  const handleProfileUpdate = (e) => {
+  const handleProfileUpdate = async (e) => {
     e.preventDefault();
     const targetUser = appUsers.find((u) => u.id === currentUser.id);
-    if (targetUser.password !== profileForm.currentPass) {
+    if (!targetUser || targetUser.password !== profileForm.currentPass) {
       return showAlert("Mevcut şifrenizi yanlış girdiniz!");
     }
 
-    const updatedUsers = appUsers.map((u) =>
-      u.id === currentUser.id ? { ...u, password: profileForm.newPass } : u,
-    );
-    setAppUsers(updatedUsers);
-    localStorage.setItem("app_users_v2", JSON.stringify(updatedUsers));
+    const updatedUser = { ...targetUser, password: profileForm.newPass };
 
-    setProfileForm({ currentPass: "", newPass: "" });
-    setIsProfileOpen(false);
-    showAlert("Şifreniz başarıyla güncellendi!");
+    try {
+      const response = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedUser),
+      });
+
+      if (response.ok) {
+        await fetchUsers(); // Veritabanından listeyi tazele
+        setProfileForm({ currentPass: "", newPass: "" });
+        setIsProfileOpen(false);
+        showAlert("Şifreniz bulut veritabanında başarıyla güncellendi!");
+      } else {
+        throw new Error("API Hatası");
+      }
+    } catch (error) {
+      console.warn(
+        "Kullanıcı API bağlantısı yok, yerel test güncelleniyor.",
+        error,
+      );
+      const updatedUsers = appUsers.map((u) =>
+        u.id === currentUser.id ? updatedUser : u,
+      );
+      setAppUsers(updatedUsers);
+      localStorage.setItem("app_users_v2", JSON.stringify(updatedUsers));
+      setProfileForm({ currentPass: "", newPass: "" });
+      setIsProfileOpen(false);
+      showAlert("Şifreniz başarıyla güncellendi! (Yerel Test)");
+    }
   };
 
-  // --- ADMIN FONKSİYONLARI ---
-  const handleAdminAddUser = (e) => {
+  // --- ADMIN FONKSİYONLARI (KULLANICIYI VERİTABANINA YAZMA) ---
+  const handleAdminAddUser = async (e) => {
     e.preventDefault();
     const username = newUserForm.username.trim().toLowerCase();
 
@@ -909,33 +911,86 @@ export default function App() {
       role: newUserForm.role,
     };
 
-    const updatedUsers = [...appUsers, newUser];
-    setAppUsers(updatedUsers);
-    localStorage.setItem("app_users_v2", JSON.stringify(updatedUsers));
+    try {
+      const response = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newUser),
+      });
 
-    setNewUserForm({ username: "", password: "", role: "user" });
-    showAlert(`${username} kullanıcısı başarıyla eklendi!`);
+      if (response.ok) {
+        await fetchUsers();
+        setNewUserForm({ username: "", password: "", role: "user" });
+        showAlert(`${username} kullanıcısı başarıyla veritabanına eklendi!`);
+      } else {
+        throw new Error("API Hatası");
+      }
+    } catch (error) {
+      const updatedUsers = [...appUsers, newUser];
+      setAppUsers(updatedUsers);
+      localStorage.setItem("app_users_v2", JSON.stringify(updatedUsers));
+      setNewUserForm({ username: "", password: "", role: "user" });
+      showAlert(`${username} kullanıcısı eklendi! (Yerel Test)`);
+    }
   };
 
-  const handleAdminPasswordChange = (userId, newPassword) => {
-    const updatedUsers = appUsers.map((u) =>
-      u.id === userId ? { ...u, password: newPassword } : u,
-    );
-    setAppUsers(updatedUsers);
-    localStorage.setItem("app_users_v2", JSON.stringify(updatedUsers));
-    showAlert("Kullanıcı şifresi güncellendi.");
+  const handleAdminPasswordChange = async (userId, newPassword) => {
+    const targetUser = appUsers.find((u) => u.id === userId);
+    if (!targetUser) return;
+
+    const updatedUser = { ...targetUser, password: newPassword };
+
+    try {
+      const response = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedUser),
+      });
+
+      if (response.ok) {
+        await fetchUsers();
+        showAlert("Kullanıcı şifresi veritabanında başarıyla güncellendi.");
+      } else {
+        throw new Error("API Hatası");
+      }
+    } catch (error) {
+      const updatedUsers = appUsers.map((u) =>
+        u.id === userId ? updatedUser : u,
+      );
+      setAppUsers(updatedUsers);
+      localStorage.setItem("app_users_v2", JSON.stringify(updatedUsers));
+      showAlert("Kullanıcı şifresi güncellendi. (Yerel Test)");
+    }
   };
 
   const handleAdminDeleteUser = (userId) => {
     if (userId === currentUser.id)
       return showAlert("Kendi hesabınızı silemezsiniz!");
+
     showConfirm(
       "Bu kullanıcıyı tamamen silmek istediğinize emin misiniz?",
-      () => {
-        const updatedUsers = appUsers.filter((u) => u.id !== userId);
-        setAppUsers(updatedUsers);
-        localStorage.setItem("app_users_v2", JSON.stringify(updatedUsers));
-        closeDialog();
+      async () => {
+        try {
+          const response = await fetch(`/api/users?id=${userId}`, {
+            method: "DELETE",
+          });
+          if (response.ok) {
+            await fetchUsers();
+            closeDialog();
+            setTimeout(
+              () => showAlert("Kullanıcı veritabanından tamamen silindi!"),
+              200,
+            );
+          } else {
+            throw new Error("API Hatası");
+          }
+        } catch (error) {
+          const updatedUsers = appUsers.filter((u) => u.id !== userId);
+          setAppUsers(updatedUsers);
+          localStorage.setItem("app_users_v2", JSON.stringify(updatedUsers));
+          closeDialog();
+          setTimeout(() => showAlert("Kullanıcı silindi! (Yerel Test)"), 200);
+        }
       },
     );
   };
@@ -970,6 +1025,7 @@ export default function App() {
       style: "currency",
       currency: "TRY",
     }).format(amount);
+
   const minDate = `${selectedYear}-${selectedMonth}-01`;
   const maxDate = `${selectedYear}-${selectedMonth}-${new Date(parseInt(selectedYear), parseInt(selectedMonth), 0).getDate()}`;
   const currentTypeCategories = categories.filter(
@@ -1009,7 +1065,6 @@ export default function App() {
 
         <div className="bg-white/95 p-8 sm:p-10 rounded-3xl shadow-2xl w-full max-w-md border border-white/50 backdrop-blur-xl relative overflow-hidden z-10">
           <div className="absolute -right-20 -top-20 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
           <div className="flex items-center justify-center w-20 h-20 bg-gradient-to-br from-indigo-100 to-violet-100 text-indigo-600 rounded-2xl mx-auto mb-6 shadow-inner transform -rotate-6">
             <Wallet size={40} className="rotate-6" />
           </div>
@@ -1492,11 +1547,7 @@ export default function App() {
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
-                            className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold border ${
-                              t.type === "GELİR"
-                                ? "bg-green-50 text-green-700 border-green-200"
-                                : "bg-red-50 text-red-700 border-red-200"
-                            }`}
+                            className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold border ${t.type === "GELİR" ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}
                           >
                             {t.categoryName || t.categoryId}
                           </span>
