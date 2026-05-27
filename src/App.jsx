@@ -856,7 +856,7 @@ export default function App() {
     setCategories([]);
     setActiveTab("dashboard");
   };
-  // --- FOTOĞRAF SIKIŞTIRMA VE YÜKLEME ---
+  // --- FOTOĞRAF SIKIŞTIRMA VE AKILLI KIRPMA (CENTER CROP) ---
   const compressImage = (file) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -866,31 +866,37 @@ export default function App() {
         img.src = event.target.result;
         img.onload = () => {
           const canvas = document.createElement("canvas");
-          const MAX_WIDTH = 800; // Profil resmi için fazlasıyla yeterli çözünürlük
-          const MAX_HEIGHT = 800;
-          let width = img.width;
-          let height = img.height;
+          const MAX_SIZE = 800; // Profil resmi için kusursuz kare boyutu
 
-          // Oranları koruyarak boyutları küçült
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height *= MAX_WIDTH / width;
-              width = MAX_WIDTH;
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width *= MAX_HEIGHT / height;
-              height = MAX_HEIGHT;
-            }
-          }
+          const width = img.width;
+          const height = img.height;
 
-          canvas.width = width;
-          canvas.height = height;
+          // 1. Resmi tam kare (1:1) yapmak için merkez hesaplaması
+          // En kısa kenarı bulup, resmi o boyutta bir kareye göre ortalıyoruz
+          const size = Math.min(width, height);
+          const startX = (width - size) / 2; // Yatayda tam ortala
+          const startY = (height - size) / 2; // Dikeyde tam ortala
+
+          // 2. Tuvalimizi (Canvas) mükemmel kare (800x800) olarak ayarlıyoruz
+          canvas.width = MAX_SIZE;
+          canvas.height = MAX_SIZE;
           const ctx = canvas.getContext("2d");
-          ctx.drawImage(img, 0, 0, width, height);
 
-          // Resmi JPEG formatında %70 kaliteyle sıkıştır (Boyutu inanılmaz küçültür)
-          const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+          // 3. Resmin sadece hesapladığımız o kusursuz orta karesini alıp çiziyoruz
+          ctx.drawImage(
+            img,
+            startX,
+            startY,
+            size,
+            size,
+            0,
+            0,
+            MAX_SIZE,
+            MAX_SIZE,
+          );
+
+          // 4. Resmi JPEG formatında %80 kaliteyle sıkıştırıyoruz (Hem net hem küçük boyutlu)
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
           resolve(dataUrl);
         };
         img.onerror = (error) => reject(error);
