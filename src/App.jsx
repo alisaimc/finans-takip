@@ -411,7 +411,18 @@ export default function App() {
       if (response.ok) {
         const data = await response.json();
         setAppUsers(data);
-        // Eğer giriş yapmış bir kullanıcı varsa verisini de veritabanından tazeleyelim
+
+        // 1. GLOBAL AYARLARI SADECE ADMİN'DEN ÇEK VE TÜM SİSTEME UYGULA
+        const adminUser = data.find((u) => u.role === "admin");
+        if (adminUser) {
+          if (adminUser.systemBgColor)
+            setSystemBgColor(adminUser.systemBgColor);
+          if (adminUser.weatherOverride)
+            setWeatherOverride(adminUser.weatherOverride);
+          if (adminUser.systemCity) setSystemCity(adminUser.systemCity);
+        }
+
+        // 2. GİRİŞ YAPAN KULLANICININ KİŞİSEL AYARLARINI (FOTO/ARKA PLAN) UYGULA
         const loggedInUser = JSON.parse(
           localStorage.getItem("app_currentUser_v2"),
         );
@@ -424,36 +435,14 @@ export default function App() {
               role: freshUserData.role,
               profilePhoto: freshUserData.profilePhoto,
               backgroundImage: freshUserData.backgroundImage,
-              systemBgColor: freshUserData.systemBgColor || "default", // YENİ
-              weatherOverride: freshUserData.weatherOverride || "auto", // YENİ
             });
-            // Ekrana anında uygula
-            if (freshUserData.systemBgColor)
-              setSystemBgColor(freshUserData.systemBgColor);
-            if (freshUserData.weatherOverride)
-              setWeatherOverride(freshUserData.weatherOverride);
           }
         }
       } else {
         throw new Error("API Hatası");
       }
     } catch (error) {
-      console.error(
-        "Kullanıcı API'sine ulaşılamadı. Test ortamı verisi kullanılıyor...",
-        error,
-      );
-      const localUsers = JSON.parse(localStorage.getItem("app_users_v2")) || [
-        { id: "admin_1", username: "admin", password: "123", role: "admin" },
-      ];
-      setAppUsers(localUsers);
-
-      const loggedInUser = JSON.parse(
-        localStorage.getItem("app_currentUser_v2"),
-      );
-      if (loggedInUser) {
-        const found = localUsers.find((u) => u.id === loggedInUser.id);
-        if (found) setCurrentUser(found); // Yerel bellekte de güncel kalsın
-      }
+      console.error("API Hatası", error);
     }
   };
 
@@ -883,13 +872,18 @@ export default function App() {
         role: user.role,
         profilePhoto: user.profilePhoto,
         backgroundImage: user.backgroundImage,
-        systemBgColor: user.systemBgColor || "default", // YENİ
-        weatherOverride: user.weatherOverride || "auto", // YENİ
       };
       setCurrentUser(sessionUser);
-      setSystemBgColor(sessionUser.systemBgColor); // Ekrana uygula
-      setWeatherOverride(sessionUser.weatherOverride); // Ekrana uygula
       localStorage.setItem("app_currentUser_v2", JSON.stringify(sessionUser));
+
+      // Giriş anında global ayarları (adminin seçtiklerini) ekrana yansıt
+      const adminUser = appUsers.find((u) => u.role === "admin");
+      if (adminUser) {
+        if (adminUser.systemBgColor) setSystemBgColor(adminUser.systemBgColor);
+        if (adminUser.weatherOverride)
+          setWeatherOverride(adminUser.weatherOverride);
+        if (adminUser.systemCity) setSystemCity(adminUser.systemCity);
+      }
     } else {
       showAlert("Kullanıcı adı veya şifre hatalı!");
     }
@@ -1191,13 +1185,26 @@ export default function App() {
     );
   };
 
-  const handleCityChange = (e) => {
+  const handleCityChange = async (e) => {
     const selectedCityName = e.target.value;
     const cityObj = CITIES.find((c) => c.name === selectedCityName);
     if (cityObj) {
       setSystemCity(cityObj);
-      localStorage.setItem("app_system_city", cityObj.name);
-      showAlert(`Sistem şehri ${cityObj.name} olarak güncellendi.`);
+
+      const targetUser = appUsers.find((u) => u.id === currentUser.id);
+      const updatedUser = { ...targetUser, systemCity: cityObj };
+      try {
+        await fetch("/api/users", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updatedUser),
+        });
+        fetchUsers();
+      } catch (err) {}
+
+      showAlert(
+        `Sistem şehri ${cityObj.name} olarak tüm sistemde güncellendi.`,
+      );
     }
   };
 
@@ -1205,7 +1212,6 @@ export default function App() {
     const mode = e.target.value;
     setWeatherOverride(mode);
 
-    // Veritabanına kullanıcının tercihini kaydet
     const targetUser = appUsers.find((u) => u.id === currentUser.id);
     const updatedUser = { ...targetUser, weatherOverride: mode };
     try {
@@ -1214,28 +1220,16 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updatedUser),
       });
-      const newSession = { ...currentUser, weatherOverride: mode };
-      setCurrentUser(newSession);
-      localStorage.setItem("app_currentUser_v2", JSON.stringify(newSession));
+      fetchUsers();
     } catch (err) {}
 
-    const modeNames = {
-      auto: "Otomatik",
-      clear: "Güneşli / Açık",
-      rain: "Yağmurlu",
-      clouds: "Bulutlu",
-      snow: "Karlı",
-    };
-    showAlert(
-      `Hava durumu efekti "${modeNames[mode]}" olarak hesabınıza kaydedildi.`,
-    );
+    showAlert("Hava durumu efekti tüm sistemde güncellendi.");
   };
 
   const handleThemeChange = async (e) => {
     const newTheme = e.target.value;
     setSystemBgColor(newTheme);
 
-    // Veritabanına kullanıcının temasını kaydet
     const targetUser = appUsers.find((u) => u.id === currentUser.id);
     const updatedUser = { ...targetUser, systemBgColor: newTheme };
     try {
@@ -1244,12 +1238,10 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updatedUser),
       });
-      const newSession = { ...currentUser, systemBgColor: newTheme };
-      setCurrentUser(newSession);
-      localStorage.setItem("app_currentUser_v2", JSON.stringify(newSession));
+      fetchUsers();
     } catch (err) {}
 
-    showAlert("Tema tercihiniz hesabınıza kaydedildi!");
+    showAlert("Sistem teması tüm kullanıcılar için güncellendi!");
   };
 
   // --- HELPERS ---
