@@ -840,6 +840,7 @@ export default function App() {
         id: user.id,
         username: user.username,
         role: user.role,
+        profilePhoto: user.profilePhoto,
       };
       setCurrentUser(sessionUser);
       localStorage.setItem("app_currentUser_v2", JSON.stringify(sessionUser));
@@ -855,7 +856,40 @@ export default function App() {
     setCategories([]);
     setActiveTab("dashboard");
   };
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
+    // Sınır 10MB olarak güncellendi
+    if (file.size > 10 * 1024 * 1024) {
+      return showAlert("Lütfen 10MB'dan daha küçük bir fotoğraf seçin.");
+    }
+
+    try {
+      const base64 = await convertToBase64(file);
+      const targetUser = appUsers.find((u) => u.id === currentUser.id);
+      const updatedUser = { ...targetUser, profilePhoto: base64 };
+
+      const response = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedUser),
+      });
+
+      if (response.ok) {
+        await fetchUsers(); // Veritabanından listeyi tazele
+        const newSession = { ...currentUser, profilePhoto: base64 };
+        setCurrentUser(newSession); // Ekranda anında değişmesi için
+        localStorage.setItem("app_currentUser_v2", JSON.stringify(newSession));
+        showAlert("Profil fotoğrafınız başarıyla güncellendi!");
+      } else {
+        throw new Error("API Hatası");
+      }
+    } catch (error) {
+      console.error(error);
+      showAlert("Fotoğraf yüklenirken bir hata oluştu.");
+    }
+  };
   const handleProfileUpdate = async (e) => {
     e.preventDefault();
     const targetUser = appUsers.find((u) => u.id === currentUser.id);
@@ -1223,8 +1257,16 @@ export default function App() {
               className="flex items-center gap-2 hover:bg-slate-50 p-1.5 rounded-xl transition-colors border border-transparent hover:border-slate-200"
               title="Profilim"
             >
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-violet-500 text-white flex items-center justify-center font-bold text-sm shadow-md">
-                {currentUser.username.substring(0, 2).toUpperCase()}
+              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-violet-500 text-white flex items-center justify-center font-bold text-sm shadow-md overflow-hidden">
+                {currentUser.profilePhoto ? (
+                  <img
+                    src={currentUser.profilePhoto}
+                    alt="Profil"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  currentUser.username.substring(0, 2).toUpperCase()
+                )}
               </div>
               <span className="font-bold text-sm text-slate-700 hidden sm:block capitalize">
                 {currentUser.username}
@@ -2014,10 +2056,31 @@ export default function App() {
               </button>
             </div>
 
-            <div className="p-6 flex flex-col items-center border-b border-slate-100">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-indigo-500 to-violet-500 text-white flex items-center justify-center font-bold text-2xl shadow-lg mb-3">
-                {currentUser.username.substring(0, 2).toUpperCase()}
+            {/* --- YENİ FOTOĞRAF YÜKLEME ALANI --- */}
+            <div className="p-6 flex flex-col items-center border-b border-slate-100 relative group">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-indigo-500 to-violet-500 text-white flex items-center justify-center font-bold text-3xl shadow-lg mb-3 overflow-hidden relative border-4 border-white">
+                {currentUser.profilePhoto ? (
+                  <img
+                    src={currentUser.profilePhoto}
+                    alt="Profil"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  currentUser.username.substring(0, 2).toUpperCase()
+                )}
+
+                {/* Hover Efekti ve Dosya Seçici */}
+                <label className="absolute inset-0 bg-slate-900/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer backdrop-blur-sm">
+                  <Edit2 size={24} className="text-white" />
+                  <input
+                    type="file"
+                    accept="image/jpeg, image/png, image/webp"
+                    className="hidden"
+                    onChange={handlePhotoUpload}
+                  />
+                </label>
               </div>
+
               <h3 className="font-black text-xl text-slate-800 capitalize">
                 {currentUser.username}
               </h3>
@@ -2029,6 +2092,7 @@ export default function App() {
                   : "Standart Kullanıcı"}
               </span>
             </div>
+            {/* ----------------------------------- */}
 
             <form onSubmit={handleProfileUpdate} className="p-6 bg-slate-50/30">
               <h4 className="font-bold text-sm text-slate-700 mb-4 flex items-center gap-2">
