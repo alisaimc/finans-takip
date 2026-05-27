@@ -1,9 +1,9 @@
 // pages/api/init.js
-import clientPromise from '../lib/mongodb.js'; // Yol güncellendi
+import clientPromise from '../lib/mongodb.js';
 
 export default async function handler(req, res) {
   const client = await clientPromise;
-  // 'finans' yerine 'finans_db' yapıldı
+  // Burası 'finans_db' olmalı
   const col = client.db('finans_db').collection('users'); 
   const admin = { id: 'admin_1', username: 'admin', password: '123', role: 'admin' };
   
