@@ -936,11 +936,12 @@ export default function App() {
     }
   };
 
-  const handleAdminPasswordChange = async (userId, newPassword) => {
+  const handleAdminUpdateUser = async (userId, field, newValue) => {
     const targetUser = appUsers.find((u) => u.id === userId);
-    if (!targetUser) return;
+    // Değer değişmediyse boşuna API'ye istek atma
+    if (!targetUser || targetUser[field] === newValue) return;
 
-    const updatedUser = { ...targetUser, password: newPassword };
+    const updatedUser = { ...targetUser, [field]: newValue };
 
     try {
       const response = await fetch("/api/users", {
@@ -951,7 +952,7 @@ export default function App() {
 
       if (response.ok) {
         await fetchUsers();
-        showAlert("Kullanıcı şifresi veritabanında başarıyla güncellendi.");
+        showAlert("Kullanıcı bilgisi başarıyla güncellendi.");
       } else {
         throw new Error("API Hatası");
       }
@@ -961,7 +962,7 @@ export default function App() {
       );
       setAppUsers(updatedUsers);
       localStorage.setItem("app_users_v2", JSON.stringify(updatedUsers));
-      showAlert("Kullanıcı şifresi güncellendi. (Yerel Test)");
+      showAlert("Kullanıcı bilgisi güncellendi. (Yerel Test)");
     }
   };
 
@@ -1921,39 +1922,58 @@ export default function App() {
                         key={u.id}
                         className="hover:bg-slate-50 transition-colors"
                       >
+                        {/* 1. ROL GÜNCELLEME */}
                         <td className="px-4 py-3 whitespace-nowrap">
-                          <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ${u.role === "admin" ? "bg-indigo-100 text-indigo-700" : "bg-slate-100 text-slate-600"}`}
+                          <select
+                            defaultValue={u.role}
+                            onChange={(e) =>
+                              handleAdminUpdateUser(
+                                u.id,
+                                "role",
+                                e.target.value,
+                              )
+                            }
+                            disabled={u.id === currentUser.id}
+                            className={`px-2 py-1 rounded text-xs font-bold outline-none border focus:ring-1 focus:ring-indigo-500 ${u.role === "admin" ? "bg-indigo-100 text-indigo-700 border-indigo-200" : "bg-slate-100 text-slate-600 border-slate-200"}`}
                           >
-                            {u.role === "admin" ? "SUPERADMIN" : "STANDART"}
-                          </span>
+                            <option value="admin">SUPERADMIN</option>
+                            <option value="user">STANDART</option>
+                          </select>
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap font-bold text-slate-700">
-                          {u.username}
-                        </td>
+
+                        {/* 2. KULLANICI ADI GÜNCELLEME */}
                         <td className="px-4 py-3 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="text"
-                              defaultValue={u.password}
-                              onBlur={(e) => {
-                                if (
-                                  e.target.value &&
-                                  e.target.value !== u.password
-                                ) {
-                                  handleAdminPasswordChange(
-                                    u.id,
-                                    e.target.value,
-                                  );
-                                }
-                              }}
-                              className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm w-32 focus:ring-1 focus:ring-indigo-500 outline-none font-medium text-slate-600"
-                            />
-                            <span className="text-xs text-slate-400 italic">
-                              Değiştir & Tıkla
-                            </span>
-                          </div>
+                          <input
+                            type="text"
+                            defaultValue={u.username}
+                            onBlur={(e) =>
+                              handleAdminUpdateUser(
+                                u.id,
+                                "username",
+                                e.target.value.trim().toLowerCase(),
+                              )
+                            }
+                            className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm w-32 focus:ring-1 focus:ring-indigo-500 outline-none font-bold text-slate-700 bg-transparent"
+                          />
                         </td>
+
+                        {/* 3. ŞİFRE GÜNCELLEME */}
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <input
+                            type="text"
+                            defaultValue={u.password}
+                            onBlur={(e) =>
+                              handleAdminUpdateUser(
+                                u.id,
+                                "password",
+                                e.target.value,
+                              )
+                            }
+                            className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm w-32 focus:ring-1 focus:ring-indigo-500 outline-none font-medium text-slate-600 bg-transparent"
+                          />
+                        </td>
+
+                        {/* 4. SİLME BUTONU */}
                         <td className="px-4 py-3 whitespace-nowrap text-right">
                           <button
                             onClick={() => handleAdminDeleteUser(u.id)}
