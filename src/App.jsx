@@ -261,16 +261,40 @@ const WeatherBackground = ({ city, override, systemBgColor, userBgImage }) => {
 
 const InteractiveDateClock = () => {
   const [time, setTime] = useState(new Date());
+  const [isAutoOpen, setIsAutoOpen] = useState(false); // Otomatik açılma durumu
+  const [isHovered, setIsHovered] = useState(false); // Fare ile üzerine gelme durumu
 
+  // Saatin her saniye güncellenmesi
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
+  // 15 saniye kapalı, 5 saniye açık döngüsü
+  useEffect(() => {
+    let timeoutId;
+
+    const cycle = () => {
+      // 15 saniye bekle
+      timeoutId = setTimeout(() => {
+        setIsAutoOpen(true); // Saati aç
+
+        // 5 saniye sonra geri kapat
+        timeoutId = setTimeout(() => {
+          setIsAutoOpen(false); // Saati kapat
+          cycle(); // Döngüyü başa sar
+        }, 5000);
+      }, 15000);
+    };
+
+    cycle(); // Bileşen yüklendiğinde döngüyü başlat
+
+    return () => clearTimeout(timeoutId); // Bileşen silinirse temizle
+  }, []);
+
   const hours = String(time.getHours()).padStart(2, "0");
   const minutes = String(time.getMinutes()).padStart(2, "0");
   const seconds = String(time.getSeconds()).padStart(2, "0");
-
   const dayNum = time.getDate();
 
   const months = [
@@ -300,21 +324,50 @@ const InteractiveDateClock = () => {
   const monthStr = months[time.getMonth()];
   const dayStr = days[time.getDay()];
 
+  // Saat ya otomatik döngüde açılmışsa ya da kullanıcı üzerine gelmişse genişlet
+  const isExpanded = isAutoOpen || isHovered;
+
   return (
-    <div className="group relative w-12 h-12 cursor-pointer select-none z-50">
-      <div className="absolute top-0 left-0 w-[350%] h-[150%] hidden group-hover:block z-50 pointer-events-auto"></div>
-      <div className="absolute inset-0 bg-[#ef4444] rounded-xl flex items-center justify-center text-white text-xl font-black transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] transform -rotate-6 group-hover:rotate-0 shadow-md z-0 pointer-events-none">
-        <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-100">
+    <div
+      className="relative w-12 h-12 cursor-pointer select-none z-50"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Genişlediğinde menünün kaybolmaması için gizli tıklama alanı (Hitbox) */}
+      {isExpanded && (
+        <div className="absolute top-0 left-0 w-[350%] h-[150%] z-50 pointer-events-auto"></div>
+      )}
+
+      {/* SAAT KUTUSU (Kırmızı) */}
+      <div
+        className={`absolute inset-0 bg-[#ef4444] rounded-xl flex items-center justify-center text-white text-xl font-black transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] transform shadow-md z-0 pointer-events-none ${isExpanded ? "rotate-0" : "-rotate-6"}`}
+      >
+        <span
+          className={`transition-opacity duration-300 delay-100 ${isExpanded ? "opacity-100" : "opacity-0"}`}
+        >
           {hours}
         </span>
       </div>
-      <div className="absolute inset-0 bg-[#fbbf24] rounded-xl flex items-center justify-center text-white text-xl font-black transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] transform rotate-6 group-hover:rotate-0 group-hover:translate-x-[220%] shadow-md z-10 pointer-events-none">
-        <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-100">
+
+      {/* SANİYE KUTUSU (Sarı) */}
+      <div
+        className={`absolute inset-0 bg-[#fbbf24] rounded-xl flex items-center justify-center text-white text-xl font-black transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] transform shadow-md z-10 pointer-events-none ${isExpanded ? "rotate-0 translate-x-[220%]" : "rotate-6"}`}
+      >
+        <span
+          className={`transition-opacity duration-300 delay-100 ${isExpanded ? "opacity-100" : "opacity-0"}`}
+        >
           {seconds}
         </span>
       </div>
-      <div className="absolute inset-0 bg-[#3b82f6] rounded-xl shadow-lg z-20 flex items-center justify-center overflow-hidden transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-hover:translate-x-[110%] pointer-events-none">
-        <div className="absolute inset-0 flex flex-col items-center justify-center transition-opacity duration-300 group-hover:opacity-0 opacity-100">
+
+      {/* TARİH / DAKİKA KUTUSU (Mavi) */}
+      <div
+        className={`absolute inset-0 bg-[#3b82f6] rounded-xl shadow-lg z-20 flex items-center justify-center overflow-hidden transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] pointer-events-none ${isExpanded ? "translate-x-[110%]" : "translate-x-0"}`}
+      >
+        {/* Kapalı Hal: Tarih */}
+        <div
+          className={`absolute inset-0 flex flex-col items-center justify-center transition-opacity duration-300 ${isExpanded ? "opacity-0" : "opacity-100"}`}
+        >
           <span className="text-[0.45rem] font-bold text-white/90 tracking-wider mt-0.5">
             {monthStr}
           </span>
@@ -325,7 +378,11 @@ const InteractiveDateClock = () => {
             {dayStr}
           </span>
         </div>
-        <div className="absolute inset-0 flex items-center justify-center transition-opacity duration-300 opacity-0 group-hover:opacity-100">
+
+        {/* Açık Hal: Dakika */}
+        <div
+          className={`absolute inset-0 flex items-center justify-center transition-opacity duration-300 ${isExpanded ? "opacity-100" : "opacity-0"}`}
+        >
           <span className="text-xl font-black text-white">{minutes}</span>
         </div>
       </div>
