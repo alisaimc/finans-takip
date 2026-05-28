@@ -2504,7 +2504,8 @@ export default function App() {
                   onChange={(e) =>
                     setFormData({ ...formData, date: e.target.value })
                   }
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium"
+                  /* BURAYA EKLENDİ: bg-white text-slate-800 */
+                  className="w-full px-4 py-3 bg-white text-slate-800 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium"
                 />
               </div>
               <div>
@@ -2524,7 +2525,8 @@ export default function App() {
                     onChange={(e) =>
                       setFormData({ ...formData, amount: e.target.value })
                     }
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-bold"
+                    /* BURAYA EKLENDİ: bg-white text-slate-800 */
+                    className="w-full pl-10 pr-4 py-3 bg-white text-slate-800 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-bold"
                     placeholder="0.00"
                   />
                 </div>
@@ -2539,7 +2541,8 @@ export default function App() {
                   onChange={(e) =>
                     setFormData({ ...formData, description: e.target.value })
                   }
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all resize-none font-medium"
+                  /* BURAYA EKLENDİ: bg-white text-slate-800 */
+                  className="w-full px-4 py-3 bg-white text-slate-800 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all resize-none font-medium"
                   placeholder="İsteğe bağlı..."
                 ></textarea>
               </div>
