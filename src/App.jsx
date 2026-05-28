@@ -1307,103 +1307,155 @@ export default function App() {
   // --- EKRANLAR ---
   if (!currentUser) {
     return (
-      <div className="min-h-screen relative flex items-center justify-center p-4">
+      <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden">
         <WeatherBackground
           city={systemCity}
           override={weatherOverride}
           systemBgColor={systemBgColor}
         />
-        <div className="bg-white/95 p-8 sm:p-10 rounded-3xl shadow-2xl w-full max-w-md border border-white/50 backdrop-blur-xl relative overflow-hidden z-10">
-          <div className="absolute -right-20 -top-20 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
-          <div className="flex items-center justify-center w-20 h-20 bg-gradient-to-br from-indigo-100 to-violet-100 text-indigo-600 rounded-2xl mx-auto mb-6 shadow-inner transform -rotate-6">
-            <Wallet size={40} className="rotate-6" />
-          </div>
 
-          <h1 className="text-3xl font-black text-center text-slate-800 mb-2 tracking-tight">
-            Finans Takip
-          </h1>
-          <p className="text-center text-slate-500 mb-8 font-medium">
-            Hesabınıza giriş yapın
-          </p>
+        {/* --- GİRİŞ EKRANINA ÖZEL ANİMASYONLAR --- */}
+        <style>{`
+          @keyframes float-smooth {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+          }
+          @keyframes spin-slow {
+            from { transform: rotate(0deg) scale(1); }
+            50% { transform: rotate(180deg) scale(1.15); }
+            to { transform: rotate(360deg) scale(1); }
+          }
+          @keyframes slide-up-fade {
+            from { opacity: 0; transform: translateY(40px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          .anim-slide-up {
+            animation: slide-up-fade 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          }
+          .anim-float {
+            animation: float-smooth 6s ease-in-out infinite;
+          }
+          .anim-blob-1 {
+            animation: spin-slow 12s linear infinite;
+          }
+          .anim-blob-2 {
+            animation: spin-slow 16s linear infinite reverse;
+          }
+        `}</style>
 
-          <form onSubmit={handleAuth} className="space-y-5">
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-1.5 ml-1">
-                Kullanıcı Adı
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
-                  <User size={18} />
-                </div>
-                <input
-                  type="text"
-                  name="username"
-                  required
-                  className="w-full pl-11 pr-4 py-3.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium text-slate-700"
-                  placeholder="Kullanıcı adınız"
-                  defaultValue="admin"
+        {/* ANA KONTEYNER (Aşağıdan gelme ve havada süzülme) */}
+        <div className="anim-slide-up anim-float relative w-full max-w-md z-10 mt-10">
+          {/* KART ARKASI HAREKETLİ RENKLİ HALELER */}
+          <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-fuchsia-500 rounded-[2.5rem] blur-xl opacity-40 anim-blob-1"></div>
+          <div className="absolute -inset-1 bg-gradient-to-l from-blue-400 to-emerald-400 rounded-[2.5rem] blur-xl opacity-30 anim-blob-2"></div>
+
+          {/* CAM EFEKTLİ (GLASSMORPHISM) GİRİŞ KARTI */}
+          <div className="bg-white/85 p-8 sm:p-10 rounded-[2rem] shadow-2xl border border-white/70 backdrop-blur-2xl relative overflow-hidden">
+            {/* Kart içi ekstra derinlik veren blur'lar */}
+            <div className="absolute -right-20 -top-20 w-40 h-40 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none anim-blob-1"></div>
+            <div className="absolute -left-20 -bottom-20 w-40 h-40 bg-violet-500/20 rounded-full blur-3xl pointer-events-none anim-blob-2"></div>
+
+            {/* Hareketli Cüzdan İkonu */}
+            <div className="relative group w-20 h-20 mx-auto mb-6">
+              <div className="absolute inset-0 bg-indigo-600 rounded-2xl blur opacity-20 group-hover:opacity-50 transition duration-500"></div>
+              <div className="relative flex items-center justify-center w-full h-full bg-gradient-to-br from-indigo-50 to-violet-100 text-indigo-600 rounded-2xl shadow-inner transform transition-transform duration-500 group-hover:scale-110 group-hover:rotate-12">
+                <Wallet
+                  size={40}
+                  className="transform -rotate-6 group-hover:rotate-0 transition-transform duration-500"
                 />
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-1.5 ml-1">
-                Şifre
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
-                  <Lock size={18} />
+            <h1 className="text-3xl font-black text-center bg-clip-text text-transparent bg-gradient-to-r from-slate-800 to-indigo-900 mb-2 tracking-tight">
+              Finans Takip
+            </h1>
+            <p className="text-center text-slate-500 mb-8 font-medium">
+              Hesabınıza giriş yapın
+            </p>
+
+            <form onSubmit={handleAuth} className="space-y-5 relative z-10">
+              {/* Kullanıcı Adı Input */}
+              <div className="group">
+                <label className="block text-xs font-bold text-slate-500 mb-1.5 ml-1 uppercase tracking-wider transition-colors group-focus-within:text-indigo-600">
+                  Kullanıcı Adı
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-indigo-600 transition-colors">
+                    <User size={18} />
+                  </div>
+                  <input
+                    type="text"
+                    name="username"
+                    required
+                    style={{ colorScheme: "light" }}
+                    className="w-full pl-11 pr-4 py-3.5 rounded-xl border border-white !bg-white/60 focus:!bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all duration-300 font-bold text-slate-700 shadow-sm"
+                    placeholder="Kullanıcı adınız"
+                    defaultValue="admin"
+                  />
                 </div>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  name="password"
-                  required
-                  className="w-full pl-11 pr-12 py-3.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium text-slate-700"
-                  placeholder="Şifreniz"
-                  defaultValue="123"
-                />
+              </div>
+
+              {/* Şifre Input */}
+              <div className="group">
+                <label className="block text-xs font-bold text-slate-500 mb-1.5 ml-1 uppercase tracking-wider transition-colors group-focus-within:text-indigo-600">
+                  Şifre
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-indigo-600 transition-colors">
+                    <Lock size={18} />
+                  </div>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    name="password"
+                    required
+                    style={{ colorScheme: "light" }}
+                    className="w-full pl-11 pr-12 py-3.5 rounded-xl border border-white !bg-white/60 focus:!bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all duration-300 font-bold text-slate-700 shadow-sm"
+                    placeholder="Şifreniz"
+                    defaultValue="123"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-indigo-600 transition-colors"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex justify-end">
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-indigo-600 transition-colors"
+                  onClick={() =>
+                    showAlert(
+                      "Şifrenizi unuttuysanız veya yeni bir hesap istiyorsanız, lütfen sistem yöneticisi (Admin) ile iletişime geçin.",
+                    )
+                  }
+                  className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors hover:underline underline-offset-4"
                 >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  Yardım / Şifremi Unuttum
                 </button>
               </div>
-            </div>
 
-            <div className="flex justify-end">
+              {/* Dinamik Gradient Buton */}
               <button
-                type="button"
-                onClick={() =>
-                  showAlert(
-                    "Şifrenizi unuttuysanız veya yeni bir hesap istiyorsanız, lütfen sistem yöneticisi (Admin) ile iletişime geçin.",
-                  )
-                }
-                className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
+                type="submit"
+                className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 bg-[length:200%_auto] text-white py-4 rounded-xl font-black hover:shadow-lg hover:shadow-indigo-500/40 transition-all duration-500 hover:bg-[position:right_center] transform hover:-translate-y-1"
               >
-                Yardım / Şifremi Unuttum
+                Giriş Yap
               </button>
-            </div>
-
-            <button
-              type="submit"
-              className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white py-3.5 rounded-xl font-bold hover:shadow-lg hover:shadow-indigo-200 transition-all transform hover:-translate-y-0.5"
-            >
-              Giriş Yap
-            </button>
-          </form>
+            </form>
+          </div>
         </div>
 
+        {/* Alert Dialog */}
         {dialog.isOpen && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden p-6 text-center">
-              <p className="text-slate-800 font-medium mb-6">
-                {dialog.message}
-              </p>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden p-6 text-center anim-slide-up">
+              <p className="text-slate-800 font-bold mb-6">{dialog.message}</p>
               <button
                 onClick={closeDialog}
-                className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-700 w-full"
+                className="px-5 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold hover:shadow-lg transition-all transform hover:-translate-y-0.5 w-full"
               >
                 Tamam
               </button>
