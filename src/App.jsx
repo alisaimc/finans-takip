@@ -1483,7 +1483,8 @@ export default function App() {
             </span>
           </div>
 
-          <div className="flex flex-1 justify-center mx-4 overflow-x-auto hide-scrollbar">
+          <div className="hidden md:flex flex-1 justify-center mx-4 overflow-x-auto hide-scrollbar">
+            {" "}
             <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
               <button
                 onClick={() => setActiveTab("dashboard")}
@@ -1593,7 +1594,8 @@ export default function App() {
                 )}
                 <button
                   onClick={() => openForm()}
-                  className="relative overflow-hidden group flex-1 sm:flex-none flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-6 py-2.5 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-indigo-200 font-bold"
+                  /* hidden sm:flex eklendi: Mobilde gizlenecek, yerine FAB gelecek */
+                  className="hidden sm:flex relative overflow-hidden group flex-1 sm:flex-none items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 text-white px-6 py-2.5 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-indigo-200 font-bold"
                 >
                   <div className="absolute inset-0 w-full h-full bg-white/20 group-hover:translate-x-full transition-transform duration-700 ease-out -skew-x-12 -translate-x-full"></div>
                   <Plus
@@ -2328,6 +2330,57 @@ export default function App() {
           </div>
         )}
       </main>
+      {/* --- MOBİL İÇİN YÜZEN EKLE BUTONU (FAB - Floating Action Button) --- */}
+      {currentUser.role === "admin" &&
+        (activeTab === "dashboard" || activeTab === "list") && (
+          <button
+            onClick={() => openForm()}
+            className="md:hidden fixed bottom-20 right-4 z-[45] w-14 h-14 bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-full shadow-lg shadow-indigo-300/50 flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
+          >
+            <Plus size={28} />
+          </button>
+        )}
+
+      {/* --- MOBİL İÇİN ALT NAVİGASYON BARI (BOTTOM NAV) --- */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-slate-200 z-40 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+        <div className="flex justify-around items-center h-16 px-2">
+          <button
+            onClick={() => setActiveTab("dashboard")}
+            className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors ${activeTab === "dashboard" ? "text-indigo-600" : "text-slate-400 hover:text-slate-600"}`}
+          >
+            <LayoutDashboard size={20} />
+            <span className="text-[10px] font-bold">Özet</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("list")}
+            className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors ${activeTab === "list" ? "text-indigo-600" : "text-slate-400 hover:text-slate-600"}`}
+          >
+            <ListOrdered size={20} />
+            <span className="text-[10px] font-bold">Kayıtlar</span>
+          </button>
+
+          {currentUser.role === "admin" && (
+            <button
+              onClick={() => setActiveTab("settings")}
+              className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors ${activeTab === "settings" ? "text-indigo-600" : "text-slate-400 hover:text-slate-600"}`}
+            >
+              <Settings size={20} />
+              <span className="text-[10px] font-bold">Kategori</span>
+            </button>
+          )}
+
+          {currentUser.role === "admin" && (
+            <button
+              onClick={() => setActiveTab("admin")}
+              className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors ${activeTab === "admin" ? "text-indigo-600" : "text-slate-400 hover:text-slate-600"}`}
+            >
+              <Shield size={20} />
+              <span className="text-[10px] font-bold">Admin</span>
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* PROFİL MODAL */}
       {isProfileOpen && (
