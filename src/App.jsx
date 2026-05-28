@@ -1307,22 +1307,19 @@ export default function App() {
   // --- EKRANLAR ---
   if (!currentUser) {
     return (
-      <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden">
-        <WeatherBackground
-          city={systemCity}
-          override={weatherOverride}
-          systemBgColor={systemBgColor}
-        />
+      /* min-h-[100dvh] mobil tarayıcılarda alt çubuk kaymalarını önler */
+      <div className="min-h-[100dvh] relative flex items-center justify-center p-4 overflow-hidden bg-[#0a0f1c]">
+        {/* --- HAVA DURUMU KALDIRILDI, YERİNE MOBİL UYUMLU MODERN ARKA PLAN EKLENDİ --- */}
+        <div className="absolute inset-0 z-0">
+          <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[50%] bg-indigo-600/20 blur-[100px] rounded-full mix-blend-screen anim-blob-1"></div>
+          <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-violet-600/20 blur-[120px] rounded-full mix-blend-screen anim-blob-2"></div>
+        </div>
 
         {/* --- GİRİŞ EKRANINA ÖZEL ANİMASYONLAR --- */}
         <style>{`
-          @keyframes float-smooth {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-15px); }
-          }
           @keyframes spin-slow {
             from { transform: rotate(0deg) scale(1); }
-            50% { transform: rotate(180deg) scale(1.15); }
+            50% { transform: rotate(180deg) scale(1.2); }
             to { transform: rotate(360deg) scale(1); }
           }
           @keyframes slide-up-fade {
@@ -1332,98 +1329,74 @@ export default function App() {
           .anim-slide-up {
             animation: slide-up-fade 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
           }
-          .anim-float {
-            animation: float-smooth 6s ease-in-out infinite;
-          }
-          .anim-blob-1 {
-            animation: spin-slow 12s linear infinite;
-          }
-          .anim-blob-2 {
-            animation: spin-slow 16s linear infinite reverse;
-          }
+          .anim-blob-1 { animation: spin-slow 15s linear infinite; }
+          .anim-blob-2 { animation: spin-slow 20s linear infinite reverse; }
         `}</style>
 
-        {/* ANA KONTEYNER (Aşağıdan gelme ve havada süzülme) */}
-        <div className="anim-slide-up anim-float relative w-full max-w-md z-10 mt-10">
-          {/* KART ARKASI HAREKETLİ RENKLİ HALELER */}
-          <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-fuchsia-500 rounded-[2.5rem] blur-xl opacity-40 anim-blob-1"></div>
-          <div className="absolute -inset-1 bg-gradient-to-l from-blue-400 to-emerald-400 rounded-[2.5rem] blur-xl opacity-30 anim-blob-2"></div>
-
-          {/* CAM EFEKTLİ (GLASSMORPHISM) GİRİŞ KARTI */}
-          <div className="bg-white/85 p-8 sm:p-10 rounded-[2rem] shadow-2xl border border-white/70 backdrop-blur-2xl relative overflow-hidden">
-            {/* Kart içi ekstra derinlik veren blur'lar */}
-            <div className="absolute -right-20 -top-20 w-40 h-40 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none anim-blob-1"></div>
-            <div className="absolute -left-20 -bottom-20 w-40 h-40 bg-violet-500/20 rounded-full blur-3xl pointer-events-none anim-blob-2"></div>
-
+        {/* ANA KONTEYNER (Mobilde alttan açılan Bottom Sheet hissiyatı) */}
+        <div className="anim-slide-up relative w-full max-w-md z-10 w-full">
+          <div className="bg-white p-6 sm:p-10 rounded-[2.5rem] shadow-2xl relative overflow-hidden">
             {/* Hareketli Cüzdan İkonu */}
-            <div className="relative group w-20 h-20 mx-auto mb-6">
-              <div className="absolute inset-0 bg-indigo-600 rounded-2xl blur opacity-20 group-hover:opacity-50 transition duration-500"></div>
-              <div className="relative flex items-center justify-center w-full h-full bg-gradient-to-br from-indigo-50 to-violet-100 text-indigo-600 rounded-2xl shadow-inner transform transition-transform duration-500 group-hover:scale-110 group-hover:rotate-12">
-                <Wallet
-                  size={40}
-                  className="transform -rotate-6 group-hover:rotate-0 transition-transform duration-500"
-                />
+            <div className="relative w-20 h-20 mx-auto mb-6 mt-2">
+              <div className="absolute inset-0 bg-indigo-500 rounded-[1.5rem] blur-xl opacity-30"></div>
+              <div className="relative flex items-center justify-center w-full h-full bg-gradient-to-br from-indigo-600 to-violet-600 text-white rounded-[1.5rem] shadow-inner transform -rotate-3">
+                <Wallet size={36} />
               </div>
             </div>
 
-            <h1 className="text-3xl font-black text-center bg-clip-text text-transparent bg-gradient-to-r from-slate-800 to-indigo-900 mb-2 tracking-tight">
-              Finans Takip
+            <h1 className="text-3xl font-black text-center text-slate-800 mb-2 tracking-tight">
+              Hoş Geldiniz
             </h1>
-            <p className="text-center text-slate-500 mb-8 font-medium">
-              Hesabınıza giriş yapın
+            <p className="text-center text-slate-500 mb-8 font-medium text-sm">
+              Finans Takip sistemine giriş yapın
             </p>
 
-            <form onSubmit={handleAuth} className="space-y-5 relative z-10">
-              {/* Kullanıcı Adı Input */}
-              <div className="group">
-                <label className="block text-xs font-bold text-slate-500 mb-1.5 ml-1 uppercase tracking-wider transition-colors group-focus-within:text-indigo-600">
-                  Kullanıcı Adı
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-indigo-600 transition-colors">
-                    <User size={18} />
+            <form onSubmit={handleAuth} className="space-y-4">
+              {/* Kullanıcı Adı Input - Mobilde daha geniş tıklama alanı (py-4) */}
+              <div>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-indigo-600 transition-colors z-10">
+                    <User size={22} />
                   </div>
                   <input
                     type="text"
                     name="username"
                     required
                     style={{ colorScheme: "light" }}
-                    className="w-full pl-11 pr-4 py-3.5 rounded-xl border border-white !bg-white/60 focus:!bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all duration-300 font-bold text-slate-700 shadow-sm"
-                    placeholder="Kullanıcı adınız"
+                    /* text-[16px] iOS'ta otomatik zoom'u engeller */
+                    className="w-full pl-12 pr-4 py-4 rounded-2xl border-0 ring-1 ring-slate-200 !bg-slate-50 focus:!bg-white focus:ring-2 focus:ring-indigo-600 outline-none transition-all duration-300 font-bold text-slate-800 text-[16px]"
+                    placeholder="Kullanıcı Adı"
                     defaultValue="admin"
                   />
                 </div>
               </div>
 
               {/* Şifre Input */}
-              <div className="group">
-                <label className="block text-xs font-bold text-slate-500 mb-1.5 ml-1 uppercase tracking-wider transition-colors group-focus-within:text-indigo-600">
-                  Şifre
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-indigo-600 transition-colors">
-                    <Lock size={18} />
+              <div>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-indigo-600 transition-colors z-10">
+                    <Lock size={22} />
                   </div>
                   <input
                     type={showPassword ? "text" : "password"}
                     name="password"
                     required
                     style={{ colorScheme: "light" }}
-                    className="w-full pl-11 pr-12 py-3.5 rounded-xl border border-white !bg-white/60 focus:!bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all duration-300 font-bold text-slate-700 shadow-sm"
-                    placeholder="Şifreniz"
+                    className="w-full pl-12 pr-12 py-4 rounded-2xl border-0 ring-1 ring-slate-200 !bg-slate-50 focus:!bg-white focus:ring-2 focus:ring-indigo-600 outline-none transition-all duration-300 font-bold text-slate-800 text-[16px]"
+                    placeholder="Şifre"
                     defaultValue="123"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-indigo-600 transition-colors"
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-indigo-600 transition-colors z-10 p-2"
                   >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    {showPassword ? <EyeOff size={22} /> : <Eye size={22} />}
                   </button>
                 </div>
               </div>
 
-              <div className="flex justify-end">
+              <div className="flex justify-end pt-1">
                 <button
                   type="button"
                   onClick={() =>
@@ -1431,16 +1404,16 @@ export default function App() {
                       "Şifrenizi unuttuysanız veya yeni bir hesap istiyorsanız, lütfen sistem yöneticisi (Admin) ile iletişime geçin.",
                     )
                   }
-                  className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors hover:underline underline-offset-4"
+                  className="text-sm font-bold text-indigo-600 hover:text-indigo-800 transition-colors py-2 active:scale-95"
                 >
-                  Yardım / Şifremi Unuttum
+                  Şifremi Unuttum
                 </button>
               </div>
 
-              {/* Dinamik Gradient Buton */}
+              {/* Mobilde Tıklama Hissiyatı Yüksek Buton (active:scale-[0.98]) */}
               <button
                 type="submit"
-                className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 bg-[length:200%_auto] text-white py-4 rounded-xl font-black hover:shadow-lg hover:shadow-indigo-500/40 transition-all duration-500 hover:bg-[position:right_center] transform hover:-translate-y-1"
+                className="w-full bg-slate-800 text-white py-4 rounded-2xl font-black text-[16px] shadow-lg shadow-slate-900/20 active:scale-[0.97] hover:bg-slate-900 transition-all duration-200 mt-2"
               >
                 Giriş Yap
               </button>
@@ -1451,11 +1424,13 @@ export default function App() {
         {/* Alert Dialog */}
         {dialog.isOpen && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden p-6 text-center anim-slide-up">
-              <p className="text-slate-800 font-bold mb-6">{dialog.message}</p>
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden p-6 text-center anim-slide-up">
+              <p className="text-slate-800 font-bold mb-6 text-lg">
+                {dialog.message}
+              </p>
               <button
                 onClick={closeDialog}
-                className="px-5 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold hover:shadow-lg transition-all transform hover:-translate-y-0.5 w-full"
+                className="px-5 py-4 rounded-2xl bg-indigo-600 text-white font-bold active:scale-[0.97] transition-all w-full text-[16px]"
               >
                 Tamam
               </button>
@@ -1973,7 +1948,6 @@ export default function App() {
                 className="flex flex-col sm:flex-row gap-4 mb-8 p-4 bg-slate-50 rounded-xl border border-slate-200"
               >
                 <div className="flex-1">
-                  {/* uppercase sınıfı silindi, metin elle büyük yazıldı */}
                   <label className="block text-xs font-bold text-slate-500 mb-1 tracking-wider">
                     KATEGORİ ADI
                   </label>
@@ -1983,13 +1957,15 @@ export default function App() {
                     onChange={(e) =>
                       setCategoryForm({ ...categoryForm, name: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:border-indigo-500 font-medium"
+                    /* KESİN BEYAZ ZORLAMASI BURADA */
+                    style={{ colorScheme: "light" }}
+                    className="w-full px-3 py-2 !bg-white !text-slate-800 border border-slate-300 rounded-lg outline-none focus:border-indigo-500 font-medium"
                     placeholder="Örn: YEMEK"
                     required
                   />
                 </div>
                 <div className="w-full sm:w-32">
-                  <label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">
+                  <label className="block text-xs font-bold text-slate-500 mb-1 tracking-wider">
                     TÜR
                   </label>
                   <select
@@ -1997,7 +1973,9 @@ export default function App() {
                     onChange={(e) =>
                       setCategoryForm({ ...categoryForm, type: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:border-indigo-500 font-medium"
+                    /* KESİN BEYAZ ZORLAMASI BURADA */
+                    style={{ colorScheme: "light" }}
+                    className="w-full px-3 py-2 !bg-white !text-slate-800 border border-slate-300 rounded-lg outline-none focus:border-indigo-500 font-medium"
                   >
                     <option value="GİDER">GİDER</option>
                     <option value="GELİR">GELİR</option>
