@@ -2504,8 +2504,9 @@ export default function App() {
                   onChange={(e) =>
                     setFormData({ ...formData, date: e.target.value })
                   }
-                  /* BURAYA EKLENDİ: bg-white text-slate-800 */
-                  className="w-full px-4 py-3 bg-white text-slate-800 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium"
+                  /* KESİN ÇÖZÜM İÇİN EKLENENLER */
+                  style={{ colorScheme: "light" }}
+                  className="w-full px-4 py-3 !bg-white !text-slate-800 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium"
                 />
               </div>
               <div>
