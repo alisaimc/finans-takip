@@ -2040,13 +2040,15 @@ export default function App() {
                     ))}
                   </select>
                 </div>
+
+                {/* DÜZELTİLEN KISIM: Arka Plan Efekti */}
                 <div className="flex-1 w-full md:w-1/2">
                   <label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">
                     Arka Plan Efekti
                   </label>
                   <select
-                    value={systemBgColor}
-                    onChange={handleThemeChange}
+                    value={weatherOverride}
+                    onChange={handleWeatherOverrideChange}
                     className="w-full px-4 py-2 border border-slate-300 rounded-xl outline-none focus:border-indigo-500 font-medium bg-slate-50"
                   >
                     <option value="auto">Otomatik (Gerçek Zamanlı)</option>
@@ -2056,19 +2058,15 @@ export default function App() {
                     <option value="snow">Karlı</option>
                   </select>
                 </div>
+
+                {/* DÜZELTİLEN KISIM: Sistem Teması */}
                 <div className="flex-1 w-full md:w-1/3">
                   <label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">
                     Sistem Teması (Global)
                   </label>
                   <select
                     value={systemBgColor}
-                    onChange={(e) => {
-                      setSystemBgColor(e.target.value);
-                      localStorage.setItem(
-                        "app_system_bg_color",
-                        e.target.value,
-                      );
-                    }}
+                    onChange={handleThemeChange}
                     className="w-full px-4 py-2 border border-slate-300 rounded-xl outline-none focus:border-indigo-500 font-medium bg-slate-50"
                   >
                     <option value="default">Hava Durumu (Varsayılan)</option>
