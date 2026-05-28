@@ -778,7 +778,8 @@ export default function App() {
     const newCategory = {
       ...categoryForm,
       id: categoryForm.id || Date.now().toString(),
-      name: categoryForm.name.toUpperCase(),
+      // SADECE toUpperCase DEĞİL, toLocaleUpperCase KULLANILMALI
+      name: categoryForm.name.toLocaleUpperCase("tr-TR"),
     };
 
     try {
@@ -1918,8 +1919,9 @@ export default function App() {
                 className="flex flex-col sm:flex-row gap-4 mb-8 p-4 bg-slate-50 rounded-xl border border-slate-200"
               >
                 <div className="flex-1">
-                  <label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">
-                    Kategori Adı
+                  {/* uppercase sınıfı silindi, metin elle büyük yazıldı */}
+                  <label className="block text-xs font-bold text-slate-500 mb-1 tracking-wider">
+                    KATEGORİ ADI
                   </label>
                   <input
                     type="text"
@@ -1934,7 +1936,7 @@ export default function App() {
                 </div>
                 <div className="w-full sm:w-32">
                   <label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">
-                    Tür
+                    TÜR
                   </label>
                   <select
                     value={categoryForm.type}
@@ -1970,8 +1972,9 @@ export default function App() {
 
               <div className="space-y-4">
                 <div>
-                  <h3 className="text-sm font-bold text-red-600 mb-3 uppercase tracking-wider border-b border-slate-100 pb-2">
-                    Gider Kategorileri
+                  {/* uppercase sınıfı silindi, metin elle büyük yazıldı */}
+                  <h3 className="text-sm font-bold text-red-600 mb-3 tracking-wider border-b border-slate-100 pb-2">
+                    GİDER KATEGORİLERİ
                   </h3>
                   <div className="flex flex-wrap gap-2">
                     {categories
@@ -2001,8 +2004,9 @@ export default function App() {
                   </div>
                 </div>
                 <div className="pt-4">
-                  <h3 className="text-sm font-bold text-green-600 mb-3 uppercase tracking-wider border-b border-slate-100 pb-2">
-                    Gelir Kategorileri
+                  {/* uppercase sınıfı silindi, metin elle büyük yazıldı */}
+                  <h3 className="text-sm font-bold text-green-600 mb-3 tracking-wider border-b border-slate-100 pb-2">
+                    GELİR KATEGORİLERİ
                   </h3>
                   <div className="flex flex-wrap gap-2">
                     {categories
