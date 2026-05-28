@@ -1207,40 +1207,43 @@ export default function App() {
       );
     }
   };
-
   const handleWeatherOverrideChange = async (e) => {
     const mode = e.target.value;
     setWeatherOverride(mode);
+    localStorage.setItem("app_weather_override", mode); // Yerel belleği senkronize et
 
     const targetUser = appUsers.find((u) => u.id === currentUser.id);
-    const updatedUser = { ...targetUser, weatherOverride: mode };
-    try {
-      await fetch("/api/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updatedUser),
-      });
-      fetchUsers();
-    } catch (err) {}
-
-    showAlert("Hava durumu efekti tüm sistemde güncellendi.");
+    if (targetUser) {
+      const updatedUser = { ...targetUser, weatherOverride: mode };
+      try {
+        await fetch("/api/users", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updatedUser),
+        });
+        fetchUsers();
+      } catch (err) {}
+    }
+    showAlert("Arka plan efekti güncellendi.");
   };
 
   const handleThemeChange = async (e) => {
     const newTheme = e.target.value;
     setSystemBgColor(newTheme);
+    localStorage.setItem("app_system_bg_color", newTheme); // Yerel belleği senkronize et
 
     const targetUser = appUsers.find((u) => u.id === currentUser.id);
-    const updatedUser = { ...targetUser, systemBgColor: newTheme };
-    try {
-      await fetch("/api/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updatedUser),
-      });
-      fetchUsers();
-    } catch (err) {}
-
+    if (targetUser) {
+      const updatedUser = { ...targetUser, systemBgColor: newTheme };
+      try {
+        await fetch("/api/users", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updatedUser),
+        });
+        fetchUsers();
+      } catch (err) {}
+    }
     showAlert("Sistem teması tüm kullanıcılar için güncellendi!");
   };
 
@@ -2023,8 +2026,9 @@ export default function App() {
                 <MapPin size={20} className="text-indigo-600" /> Sistem Ayarları
                 (Hava Durumu)
               </h2>
+              {/* Flex yapısı düzeltildi: flex-1 w-full ile üç kutu eşit dağıtıldı */}
               <div className="flex flex-col md:flex-row gap-4 items-end">
-                <div className="flex-1 w-full md:w-1/2">
+                <div className="flex-1 w-full">
                   <label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">
                     Geçerli Şehir (Sıcaklık)
                   </label>
@@ -2040,9 +2044,7 @@ export default function App() {
                     ))}
                   </select>
                 </div>
-
-                {/* DÜZELTİLEN KISIM: Arka Plan Efekti */}
-                <div className="flex-1 w-full md:w-1/2">
+                <div className="flex-1 w-full">
                   <label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">
                     Arka Plan Efekti
                   </label>
@@ -2058,9 +2060,7 @@ export default function App() {
                     <option value="snow">Karlı</option>
                   </select>
                 </div>
-
-                {/* DÜZELTİLEN KISIM: Sistem Teması */}
-                <div className="flex-1 w-full md:w-1/3">
+                <div className="flex-1 w-full">
                   <label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">
                     Sistem Teması (Global)
                   </label>
