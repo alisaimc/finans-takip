@@ -1210,19 +1210,29 @@ export default function App() {
   const handleWeatherOverrideChange = async (e) => {
     const mode = e.target.value;
     setWeatherOverride(mode);
-    localStorage.setItem("app_weather_override", mode); // Yerel belleği senkronize et
+    localStorage.setItem("app_weather_override", mode); // Tarayıcı belleğine yaz
 
     const targetUser = appUsers.find((u) => u.id === currentUser.id);
     if (targetUser) {
       const updatedUser = { ...targetUser, weatherOverride: mode };
+
+      // YEREL STATE GÜNCELLEMESİ (API'yi beklemeden arayüzü anında kalıcı yap)
+      const updatedUsersList = appUsers.map((u) =>
+        u.id === currentUser.id ? updatedUser : u,
+      );
+      setAppUsers(updatedUsersList);
+      localStorage.setItem("app_users_v2", JSON.stringify(updatedUsersList));
+
       try {
-        await fetch("/api/users", {
+        const response = await fetch("/api/users", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(updatedUser),
         });
-        fetchUsers();
-      } catch (err) {}
+        if (response.ok) fetchUsers();
+      } catch (err) {
+        console.warn("API yok, hava durumu efekti yerel belleğe kaydedildi.");
+      }
     }
     showAlert("Arka plan efekti güncellendi.");
   };
@@ -1230,19 +1240,29 @@ export default function App() {
   const handleThemeChange = async (e) => {
     const newTheme = e.target.value;
     setSystemBgColor(newTheme);
-    localStorage.setItem("app_system_bg_color", newTheme); // Yerel belleği senkronize et
+    localStorage.setItem("app_system_bg_color", newTheme); // Tarayıcı belleğine yaz
 
     const targetUser = appUsers.find((u) => u.id === currentUser.id);
     if (targetUser) {
       const updatedUser = { ...targetUser, systemBgColor: newTheme };
+
+      // YEREL STATE GÜNCELLEMESİ (API'yi beklemeden arayüzü anında kalıcı yap)
+      const updatedUsersList = appUsers.map((u) =>
+        u.id === currentUser.id ? updatedUser : u,
+      );
+      setAppUsers(updatedUsersList);
+      localStorage.setItem("app_users_v2", JSON.stringify(updatedUsersList));
+
       try {
-        await fetch("/api/users", {
+        const response = await fetch("/api/users", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(updatedUser),
         });
-        fetchUsers();
-      } catch (err) {}
+        if (response.ok) fetchUsers();
+      } catch (err) {
+        console.warn("API yok, sistem teması yerel belleğe kaydedildi.");
+      }
     }
     showAlert("Sistem teması tüm kullanıcılar için güncellendi!");
   };
