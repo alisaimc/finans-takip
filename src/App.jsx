@@ -1192,31 +1192,30 @@ export default function App() {
       setSystemCity(cityObj);
 
       const targetUser = appUsers.find((u) => u.id === currentUser.id);
-      const updatedUser = { ...targetUser, systemCity: cityObj };
-      try {
-        await fetch("/api/users", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(updatedUser),
-        });
-        fetchUsers();
-      } catch (err) {}
-
-      showAlert(
-        `Sistem şehri ${cityObj.name} olarak tüm sistemde güncellendi.`,
-      );
+      if (targetUser) {
+        const updatedUser = { ...targetUser, systemCity: cityObj };
+        try {
+          await fetch("/api/users", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(updatedUser),
+          });
+          fetchUsers();
+        } catch (err) {}
+      }
+      // Alert kaldırıldı
     }
   };
+
   const handleWeatherOverrideChange = async (e) => {
     const mode = e.target.value;
     setWeatherOverride(mode);
-    localStorage.setItem("app_weather_override", mode); // Tarayıcı belleğine yaz
+    localStorage.setItem("app_weather_override", mode);
 
     const targetUser = appUsers.find((u) => u.id === currentUser.id);
     if (targetUser) {
       const updatedUser = { ...targetUser, weatherOverride: mode };
 
-      // YEREL STATE GÜNCELLEMESİ (API'yi beklemeden arayüzü anında kalıcı yap)
       const updatedUsersList = appUsers.map((u) =>
         u.id === currentUser.id ? updatedUser : u,
       );
@@ -1234,19 +1233,18 @@ export default function App() {
         console.warn("API yok, hava durumu efekti yerel belleğe kaydedildi.");
       }
     }
-    showAlert("Arka plan efekti güncellendi.");
+    // Alert kaldırıldı
   };
 
   const handleThemeChange = async (e) => {
     const newTheme = e.target.value;
     setSystemBgColor(newTheme);
-    localStorage.setItem("app_system_bg_color", newTheme); // Tarayıcı belleğine yaz
+    localStorage.setItem("app_system_bg_color", newTheme);
 
     const targetUser = appUsers.find((u) => u.id === currentUser.id);
     if (targetUser) {
       const updatedUser = { ...targetUser, systemBgColor: newTheme };
 
-      // YEREL STATE GÜNCELLEMESİ (API'yi beklemeden arayüzü anında kalıcı yap)
       const updatedUsersList = appUsers.map((u) =>
         u.id === currentUser.id ? updatedUser : u,
       );
@@ -1264,7 +1262,7 @@ export default function App() {
         console.warn("API yok, sistem teması yerel belleğe kaydedildi.");
       }
     }
-    showAlert("Sistem teması tüm kullanıcılar için güncellendi!");
+    // Alert kaldırıldı
   };
 
   // --- HELPERS ---
