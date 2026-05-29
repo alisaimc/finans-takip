@@ -1,58 +1,77 @@
-// pages/api/users.js
 import dbConnect from './db.js';
 import { User } from './models.js';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs'; // Şifreleme için eklendi
+
+const JWT_SECRET = process.env.JWT_SECRET || "saim_cok_gizli_anahtar_2026_!?";
+
+// Token doğrulama fonksiyonu
+const authenticate = (req) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) throw new Error('Yetkisiz');
+  return jwt.verify(token, JWT_SECRET);
+};
 
 export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '10mb', // Profil fotoğrafı yüklemeleri için boyut limiti
-    },
-  },
+  api: { bodyParser: { sizeLimit: '10mb' } },
 };
 
 export default async function handler(req, res) {
   try {
-    // 1. Veritabanına standart Mongoose köprüsüyle bağlanıyoruz
     await dbConnect();
     
-    // 2. KULLANICILARI LİSTELE
+    // İşlemi yapan kişinin kimliğini token'dan alıyoruz
+    let userContext;
+    try {
+      userContext = authenticate(req);
+    } catch (err) {
+      return res.status(401).json({ error: "Lütfen giriş yapın." });
+    }
+
     if (req.method === 'GET') {
-      const users = await User.find({});
-      
-      // Frontend MongoDB'nin "_id" formatı yerine "id" beklediği için ufak bir veri dönüşümü yapıyoruz
-      const formattedUsers = users.map(u => {
-        const userDoc = u.toObject();
-        userDoc.id = userDoc._id.toString();
-        return userDoc;
-      });
-      
+      // Sadece aynı çalışma alanındaki (workspace) kullanıcıları getir
+      const users = await User.find({ workspaceId: userContext.workspaceId });
+      const formattedUsers = users.map(u => ({ ...u.toObject(), id: u._id.toString() }));
       return res.status(200).json(formattedUsers);
     }
 
-    // 3. KULLANICI GÜNCELLE VEYA EKLE
     if (req.method === 'POST') {
-      const { id, _id, password, ...updateData } = req.body;
+      const { id, _id, password, username, role, ...updateData } = req.body;
       
-      // Frontend şifre değiştirdiğinde "password" yolluyor, veritabanı "passwordHash" bekliyor
-      if (password) {
-          updateData.passwordHash = password; // Not: Normalde burası bcrypt ile şifrelenir
-      }
+      // EĞER ID YOKSA: YENİ KULLANICI EKLENİYOR DEMEKTİR
+      if (!id && !_id) {
+         const salt = await bcrypt.genSalt(10);
+         const hashedPassword = await bcrypt.hash(password, salt);
+         
+         const newUser = await User.create({
+            username,
+            passwordHash: hashedPassword,
+            role: role || 'user',
+            workspaceId: userContext.workspaceId // <--- KRİTİK NOKTA: Adminin workspace'i kopyalanıyor
+         });
+         return res.status(201).json({ success: true, user: newUser });
+      } 
+      // EĞER ID VARSA: GÜNCELLEME İŞLEMİ YAPILIYOR DEMEKTİR
+      else {
+         if (password) {
+             const salt = await bcrypt.genSalt(10);
+             updateData.passwordHash = await bcrypt.hash(password, salt);
+         }
+         if (username) updateData.username = username;
+         if (role) updateData.role = role;
 
-      // Kullanıcıyı bul ve güncelle, yoksa yeni kayıt aç (upsert: true)
-      await User.findOneAndUpdate(
-        { _id: id || _id }, 
-        { $set: updateData }, 
-        { new: true, upsert: true }
-      );
-      
-      return res.status(200).json({ success: true });
+         await User.findOneAndUpdate(
+           { _id: id || _id },
+           { $set: updateData },
+           { new: true }
+         );
+         return res.status(200).json({ success: true });
+      }
     }
 
-    // 4. KULLANICI SİL
     if (req.method === 'DELETE') {
       const { id } = req.query;
       if (!id) return res.status(400).json({ message: "ID eksik!" });
-      
       await User.findByIdAndDelete(id);
       return res.status(200).json({ success: true });
     }
@@ -61,6 +80,6 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error("Users API Hatası:", error);
-    return res.status(500).json({ error: "Veritabanı hatası" });
+    return res.status(500).json({ error: "Veritabanı veya Sunucu hatası" });
   }
 }

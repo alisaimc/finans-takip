@@ -1203,33 +1203,39 @@ export default function App() {
     if (!username || !newUserForm.password)
       return showAlert("Lütfen kullanıcı adı ve şifre giriniz.");
 
-    const newUser = {
-      id: Date.now().toString() + Math.random().toString(36).substring(2, 9),
+    // DİKKAT: Artık ID'yi biz oluşturmuyoruz, MongoDB _id atayacak.
+    const newUserPayload = {
       username,
       password: newUserForm.password,
       role: newUserForm.role,
     };
 
     try {
+      const token = localStorage.getItem("app_token"); // BİLETİ AL
+
       const response = await fetch("/api/users", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newUser),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // BİLETİ GÖSTER
+        },
+        body: JSON.stringify(newUserPayload),
       });
 
       if (response.ok) {
-        await fetchUsers();
+        await fetchUsers(); // Veritabanından taze listeyi çek
         setNewUserForm({ username: "", password: "", role: "user" });
-        showAlert(`${username} kullanıcısı başarıyla veritabanına eklendi!`);
+        showAlert(
+          `${username} kullanıcısı başarıyla aynı çalışma alanınıza eklendi!`,
+        );
       } else {
-        throw new Error("API Hatası");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "API Hatası");
       }
     } catch (error) {
-      const updatedUsers = [...appUsers, newUser];
-      setAppUsers(updatedUsers);
-      localStorage.setItem("app_users_v2", JSON.stringify(updatedUsers));
-      setNewUserForm({ username: "", password: "", role: "user" });
-      showAlert(`${username} kullanıcısı eklendi! (Yerel Test)`);
+      console.error("Kayıt Hatası:", error);
+      // Yerel belleğe kaydetme (fallback) kısmını tamamen silebilirsin, çünkü artık veritabanı %100 şart.
+      showAlert("Kullanıcı veritabanına eklenemedi: " + error.message);
     }
   };
 
