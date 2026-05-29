@@ -1403,13 +1403,24 @@ export default function App() {
 
   const handleExportExcel = () => {
     const headers = ["Tür", "Kategori", "Tarih", "Tutar (TL)", "Açıklama"];
-    const rows = currentMonthTransactions.map((t) => [
-      t.type,
-      t.categoryName || t.categoryId,
-      t.date.split("-").reverse().join("."),
-      t.amount.toString().replace(".", ","),
-      (t.description || "").replace(/;/g, " ").replace(/\n/g, " "),
-    ]);
+    const rows = currentMonthTransactions.map((t) => {
+      // Veritabanından gelen ID'yi Kategori adıyla eşleştir
+      const cat = categories.find(
+        (c) => String(c._id || c.id) === String(t.categoryId),
+      );
+      const displayCategoryName = cat
+        ? cat.name
+        : t.categoryName || t.categoryId;
+
+      return [
+        t.type,
+        displayCategoryName,
+        t.date.split("-").reverse().join("."),
+        t.amount.toString().replace(".", ","),
+        (t.description || "").replace(/;/g, " ").replace(/\n/g, " "),
+      ];
+    });
+
     const csvContent = [
       headers.join(";"),
       ...rows.map((r) => r.join(";")),
@@ -2156,103 +2167,129 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-slate-100">
-                    {currentMonthTransactions.map((t) => (
-                      <tr
-                        key={t.id}
-                        className="hover:bg-slate-50 transition-colors group"
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold border ${t.type === "GELİR" ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}
-                          >
-                            {t.categoryName || t.categoryId}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 font-medium">
-                          {t.date.split("-").reverse().join(".")}
-                        </td>
-                        <td
-                          className="px-6 py-4 text-sm text-slate-600 font-medium max-w-xs truncate"
-                          title={t.description}
+                    {currentMonthTransactions.map((t) => {
+                      // Kategori adını ve İşlem ID'sini güvenceye al
+                      const cat = categories.find(
+                        (c) => String(c._id || c.id) === String(t.categoryId),
+                      );
+                      const displayCategoryName = cat
+                        ? cat.name
+                        : t.categoryName || "SİLİNMİŞ KATEGORİ";
+                      const transactionId = t._id || t.id;
+
+                      return (
+                        <tr
+                          key={transactionId}
+                          className="hover:bg-slate-50 transition-colors group"
                         >
-                          {t.description || "-"}
-                        </td>
-                        <td
-                          className={`px-6 py-4 whitespace-nowrap text-right font-black ${t.type === "GELİR" ? "text-green-600" : "text-red-600"}`}
-                        >
-                          {t.type === "GELİR" ? "+" : "-"}
-                          {formatCurrency(t.amount)}
-                        </td>
-                        {currentUser.role === "admin" && (
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                            <button
-                              onClick={() => openForm(t)}
-                              className="text-slate-400 hover:text-indigo-600 p-1.5 transition-colors"
-                              title="Düzenle"
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span
+                              className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold border ${t.type === "GELİR" ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}
                             >
-                              <Edit2 size={16} />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteTransaction(t.id)}
-                              className="text-slate-400 hover:text-red-600 p-1.5 transition-colors ml-2"
-                              title="Sil"
-                            >
-                              <Trash2 size={16} />
-                            </button>
+                              {displayCategoryName}
+                            </span>
                           </td>
-                        )}
-                      </tr>
-                    ))}
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 font-medium">
+                            {t.date.split("-").reverse().join(".")}
+                          </td>
+                          <td
+                            className="px-6 py-4 text-sm text-slate-600 font-medium max-w-xs truncate"
+                            title={t.description}
+                          >
+                            {t.description || "-"}
+                          </td>
+                          <td
+                            className={`px-6 py-4 whitespace-nowrap text-right font-black ${t.type === "GELİR" ? "text-green-600" : "text-red-600"}`}
+                          >
+                            {t.type === "GELİR" ? "+" : "-"}
+                            {formatCurrency(t.amount)}
+                          </td>
+                          {currentUser.role === "admin" && (
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                              <button
+                                onClick={() => openForm(t)}
+                                className="text-slate-400 hover:text-indigo-600 p-1.5 transition-colors"
+                                title="Düzenle"
+                              >
+                                <Edit2 size={16} />
+                              </button>
+                              <button
+                                onClick={() =>
+                                  handleDeleteTransaction(transactionId)
+                                }
+                                className="text-slate-400 hover:text-red-600 p-1.5 transition-colors ml-2"
+                                title="Sil"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
 
                 <div className="md:hidden flex flex-col divide-y divide-slate-100">
-                  {currentMonthTransactions.map((t) => (
-                    <div
-                      key={`mobile-trans-${t.id}`}
-                      className="p-4 bg-white flex flex-col gap-3 hover:bg-slate-50 transition-colors"
-                    >
-                      <div className="flex justify-between items-start">
-                        <div className="flex flex-col gap-1">
+                  {currentMonthTransactions.map((t) => {
+                    // Kategori adını ve İşlem ID'sini güvenceye al
+                    const cat = categories.find(
+                      (c) => String(c._id || c.id) === String(t.categoryId),
+                    );
+                    const displayCategoryName = cat
+                      ? cat.name
+                      : t.categoryName || "SİLİNMİŞ KATEGORİ";
+                    const transactionId = t._id || t.id;
+
+                    return (
+                      <div
+                        key={`mobile-trans-${transactionId}`}
+                        className="p-4 bg-white flex flex-col gap-3 hover:bg-slate-50 transition-colors"
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="flex flex-col gap-1">
+                            <span
+                              className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold border self-start ${t.type === "GELİR" ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}
+                            >
+                              {displayCategoryName}
+                            </span>
+                            <span className="text-xs text-slate-500 mt-1 font-medium">
+                              {t.date.split("-").reverse().join(".")}
+                            </span>
+                          </div>
                           <span
-                            className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold border self-start ${t.type === "GELİR" ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}
+                            className={`font-black ${t.type === "GELİR" ? "text-green-600" : "text-red-600"}`}
                           >
-                            {t.categoryName || t.categoryId}
-                          </span>
-                          <span className="text-xs text-slate-500 mt-1 font-medium">
-                            {t.date.split("-").reverse().join(".")}
+                            {t.type === "GELİR" ? "+" : "-"}
+                            {formatCurrency(t.amount)}
                           </span>
                         </div>
-                        <span
-                          className={`font-black ${t.type === "GELİR" ? "text-green-600" : "text-red-600"}`}
-                        >
-                          {t.type === "GELİR" ? "+" : "-"}
-                          {formatCurrency(t.amount)}
-                        </span>
+                        {t.description && (
+                          <p className="text-sm text-slate-600 bg-slate-50 p-2 rounded-lg font-medium">
+                            {t.description}
+                          </p>
+                        )}
+                        {currentUser.role === "admin" && (
+                          <div className="flex justify-end gap-1 mt-1 border-t border-slate-50 pt-2">
+                            <button
+                              onClick={() => openForm(t)}
+                              className="flex items-center gap-1 px-3 py-1.5 text-sm font-bold text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                            >
+                              <Edit2 size={14} /> Düzenle
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleDeleteTransaction(transactionId)
+                              }
+                              className="flex items-center gap-1 px-3 py-1.5 text-sm font-bold text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors ml-1"
+                            >
+                              <Trash2 size={14} /> Sil
+                            </button>
+                          </div>
+                        )}
                       </div>
-                      {t.description && (
-                        <p className="text-sm text-slate-600 bg-slate-50 p-2 rounded-lg font-medium">
-                          {t.description}
-                        </p>
-                      )}
-                      {currentUser.role === "admin" && (
-                        <div className="flex justify-end gap-1 mt-1 border-t border-slate-50 pt-2">
-                          <button
-                            onClick={() => openForm(t)}
-                            className="flex items-center gap-1 px-3 py-1.5 text-sm font-bold text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                          >
-                            <Edit2 size={14} /> Düzenle
-                          </button>
-                          <button
-                            onClick={() => handleDeleteTransaction(t.id)}
-                            className="flex items-center gap-1 px-3 py-1.5 text-sm font-bold text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors ml-1"
-                          >
-                            <Trash2 size={14} /> Sil
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
