@@ -581,22 +581,6 @@ export default function App() {
     }
   }, [currentUser, activeTab]);
 
-  // --- LOCAL FALLBACK TEST GÜNCELLEMELERİ ---
-  useEffect(() => {
-    if (transactions.length > 0) {
-      localStorage.setItem(
-        "app_test_transactions",
-        JSON.stringify(transactions),
-      );
-    }
-  }, [transactions]);
-
-  useEffect(() => {
-    if (categories.length > 0) {
-      localStorage.setItem("app_test_categories", JSON.stringify(categories));
-    }
-  }, [categories]);
-
   // --- HESAPLAMALAR ---
   const currentMonthTransactions = useMemo(() => {
     return transactions
@@ -980,25 +964,21 @@ export default function App() {
       const data = await response.json();
 
       if (response.ok) {
+        // YENİ EKLENEN: Yeni kullanıcıya geçmeden hemen önce eski listeleri temizle
+        setTransactions([]);
+        setCategories([]);
+        setAppUsers([]);
+
         // 2. Giriş başarılıysa Token ve Kullanıcı bilgilerini al
         const sessionUser = data.user;
-        const token = data.token; // Backend'den gelen güvenli bilet
+        const token = data.token;
 
         setCurrentUser(sessionUser);
-
-        // 3. Bilgileri ve Token'ı tarayıcının yerel belleğine (Local Storage) kaydet
         localStorage.setItem("app_currentUser_v2", JSON.stringify(sessionUser));
-        localStorage.setItem("app_token", token); // <-- EN KRİTİK NOKTA
+        localStorage.setItem("app_token", token);
 
-        // Global ayarları ekrana yansıtma (varsa)
         const savedBg = localStorage.getItem("app_system_bg_color");
         if (savedBg) setSystemBgColor(savedBg);
-
-        // Giriş başarılı mesajı (İsteğe bağlı kaldırılabilir)
-        // showAlert("Giriş başarılı! Hoş geldiniz.");
-      } else {
-        // Şifre yanlışsa veya kullanıcı yoksa Backend'den gelen hata mesajını göster
-        showAlert(data.error || "Giriş başarısız!");
       }
     } catch (error) {
       console.error("Giriş Hatası:", error);
@@ -1009,13 +989,23 @@ export default function App() {
   };
 
   // --- GÜVENLİ ÇIKIŞ YAP (LOGOUT) ---
+  // --- GÜVENLİ ÇIKIŞ YAP (LOGOUT) ---
   const handleLogout = () => {
-    setCurrentUser(null);
-    localStorage.removeItem("app_currentUser_v2");
-    localStorage.removeItem("app_token"); // Çıkış yapınca güvenli bileti yırtıp atıyoruz
+    // 1. State'leri (RAM'i) tamamen sıfırla ki veri anlık görünmesin
     setTransactions([]);
     setCategories([]);
+    setAppUsers([]);
     setActiveTab("dashboard");
+
+    // 2. Oturumu kapat
+    setCurrentUser(null);
+
+    // 3. Tarayıcı hafızasındaki (Local Storage) her şeyi sil
+    localStorage.removeItem("app_currentUser_v2");
+    localStorage.removeItem("app_token");
+    localStorage.removeItem("app_test_transactions"); // Test kalıntıları
+    localStorage.removeItem("app_test_categories"); // Test kalıntıları
+    localStorage.removeItem("app_users_v2"); // Test kalıntıları
   };
 
   // --- FOTOĞRAF SIKIŞTIRMA VE AKILLI KIRPMA (CENTER CROP) ---
