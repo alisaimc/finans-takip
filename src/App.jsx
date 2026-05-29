@@ -523,54 +523,44 @@ export default function App() {
   // --- VERİTABANINDAN VERİLERİ ÇEKME EFEKTİ ---
   useEffect(() => {
     if (currentUser) {
+      const token = localStorage.getItem("app_token"); // Güvenli biletimizi alıyoruz
+
       const fetchTransactions = async () => {
         try {
-          const response = await fetch("/api/transaction");
+          const response = await fetch("/api/transaction", {
+            headers: {
+              Authorization: `Bearer ${token}`, // Backend'e kim olduğumuzu kanıtlıyoruz
+            },
+          });
           if (response.ok) {
             const data = await response.json();
             setTransactions(data);
-          } else {
-            throw new Error("API Bulunamadı");
-          }
+          } else throw new Error("API Bulunamadı veya Yetkisiz");
         } catch (error) {
-          console.error(
-            "API'ye ulaşılamadı. Test ortamı için veri bekleniyor...",
-          );
-          const localData =
-            JSON.parse(localStorage.getItem("app_test_transactions")) || [];
-          setTransactions(localData);
+          console.error("İşlemler çekilemedi:", error);
         }
       };
 
       const fetchCategories = async () => {
         try {
-          const response = await fetch("/api/category");
+          const response = await fetch("/api/category", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
           if (response.ok) {
             const data = await response.json();
             setCategories(data);
-          } else {
-            throw new Error("API Bulunamadı");
-          }
+          } else throw new Error("API Bulunamadı veya Yetkisiz");
         } catch (error) {
-          console.error(
-            "Kategori API'ye ulaşılamadı. Yerel veri kullanılıyor...",
-          );
-          let savedCats = JSON.parse(
-            localStorage.getItem("app_test_categories"),
-          );
-          if (!savedCats || savedCats.length === 0) {
-            savedCats = DEFAULT_CATEGORIES;
-            localStorage.setItem(
-              "app_test_categories",
-              JSON.stringify(savedCats),
-            );
-          }
-          setCategories(savedCats);
+          console.error("Kategoriler çekilemedi:", error);
         }
       };
 
-      fetchTransactions();
-      fetchCategories();
+      if (token) {
+        fetchTransactions();
+        fetchCategories();
+      }
 
       if (
         ["admin", "settings"].includes(activeTab) &&
@@ -737,13 +727,19 @@ export default function App() {
     };
 
     try {
+      const token = localStorage.getItem("app_token"); // Token'ı al
+
       const response = await fetch("/api/transaction", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // API'ye bileti sun
+        },
         body: JSON.stringify(newTransaction),
       });
 
       if (response.ok) {
+        // ... (Geri kalan kodunuz aynı, fetchUsers / setTransactions kısımları)
         let updatedList = formData.id
           ? transactions.map((t) =>
               String(t.id) === String(formData.id) ? newTransaction : t,
@@ -758,7 +754,7 @@ export default function App() {
             : "Kayıt başarıyla buluta eklendi!",
         );
       } else {
-        throw new Error("API Hatası");
+        throw new Error("Yetkisiz veya API Hatası");
       }
     } catch (error) {
       console.warn("API bulunamadı, kayıt yerel belleğe eklendi.", error);
@@ -915,41 +911,82 @@ export default function App() {
   };
 
   // --- AUTH VE KULLANICI ---
-  const handleAuth = (e) => {
+  // --- GÜVENLİ GİRİŞ YAP (LOGIN) ---
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    const form = e.target.closest("form");
+    const username = form.username.value.trim().toLowerCase();
+    const password = form.password.value;
+
+    try {
+      const response = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        showAlert(
+          "Kayıt başarılı! Şimdi aynı bilgilerle giriş yapabilirsiniz.",
+        );
+      } else {
+        showAlert(data.error || "Kayıt başarısız!");
+      }
+    } catch (error) {
+      showAlert("Sunucuya bağlanılamadı.");
+    }
+  };
+  const handleAuth = async (e) => {
     e.preventDefault();
     const username = e.target.username.value.trim().toLowerCase();
     const password = e.target.password.value;
 
-    const user = appUsers.find(
-      (u) => u.username === username && u.password === password,
-    );
-    if (user) {
-      const sessionUser = {
-        id: user.id,
-        username: user.username,
-        role: user.role,
-        profilePhoto: user.profilePhoto,
-        backgroundImage: user.backgroundImage,
-      };
-      setCurrentUser(sessionUser);
-      localStorage.setItem("app_currentUser_v2", JSON.stringify(sessionUser));
+    try {
+      // 1. Gerçek Backend API'sine bilgileri gönder
+      const response = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
 
-      // Giriş anında global ayarları (adminin seçtiklerini) ekrana yansıt
-      const adminUser = appUsers.find((u) => u.role === "admin");
-      if (adminUser) {
-        if (adminUser.systemBgColor) setSystemBgColor(adminUser.systemBgColor);
-        if (adminUser.weatherOverride)
-          setWeatherOverride(adminUser.weatherOverride);
-        if (adminUser.systemCity) setSystemCity(adminUser.systemCity);
+      const data = await response.json();
+
+      if (response.ok) {
+        // 2. Giriş başarılıysa Token ve Kullanıcı bilgilerini al
+        const sessionUser = data.user;
+        const token = data.token; // Backend'den gelen güvenli bilet
+
+        setCurrentUser(sessionUser);
+
+        // 3. Bilgileri ve Token'ı tarayıcının yerel belleğine (Local Storage) kaydet
+        localStorage.setItem("app_currentUser_v2", JSON.stringify(sessionUser));
+        localStorage.setItem("app_token", token); // <-- EN KRİTİK NOKTA
+
+        // Global ayarları ekrana yansıtma (varsa)
+        const savedBg = localStorage.getItem("app_system_bg_color");
+        if (savedBg) setSystemBgColor(savedBg);
+
+        // Giriş başarılı mesajı (İsteğe bağlı kaldırılabilir)
+        // showAlert("Giriş başarılı! Hoş geldiniz.");
+      } else {
+        // Şifre yanlışsa veya kullanıcı yoksa Backend'den gelen hata mesajını göster
+        showAlert(data.error || "Giriş başarısız!");
       }
-    } else {
-      showAlert("Kullanıcı adı veya şifre hatalı!");
+    } catch (error) {
+      console.error("Giriş Hatası:", error);
+      // Backend kapalıysa veya API henüz Vercel'e yüklenmediyse yerel test (fallback) mekanizması eklenebilir,
+      // ancak SaaS yapısında gerçek API zorunludur.
+      showAlert("Sunucuya bağlanılamadı. API ayarlarınızı kontrol edin.");
     }
   };
 
+  // --- GÜVENLİ ÇIKIŞ YAP (LOGOUT) ---
   const handleLogout = () => {
     setCurrentUser(null);
     localStorage.removeItem("app_currentUser_v2");
+    localStorage.removeItem("app_token"); // Çıkış yapınca güvenli bileti yırtıp atıyoruz
     setTransactions([]);
     setCategories([]);
     setActiveTab("dashboard");
@@ -1473,6 +1510,14 @@ export default function App() {
                 className="w-full bg-slate-800 text-white py-4 rounded-2xl font-black text-[16px] shadow-lg shadow-slate-900/20 active:scale-[0.97] hover:bg-slate-900 transition-all duration-200 mt-2"
               >
                 Giriş Yap
+              </button>
+              {/* YENİ EKLENEN KAYIT OL BUTONU */}
+              <button
+                type="button"
+                onClick={handleRegister}
+                className="w-full bg-indigo-50 text-indigo-600 py-4 rounded-2xl font-black text-[16px] active:scale-[0.97] hover:bg-indigo-100 transition-all duration-200 mt-3"
+              >
+                Yeni Hesap Oluştur
               </button>
             </form>
           </div>

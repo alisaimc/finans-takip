@@ -1,55 +1,55 @@
-import clientPromise from "../lib/mongodb.js";
+const dbConnect = require('./db');
+const { Transaction } = require('./models');
+const jwt = require('jsonwebtoken');
 
-export default async function handler(req, res) {
-  try {
-    const client = await clientPromise;
-    const db = client.db("finans_db");
-    const collection = db.collection("transactions");
+const JWT_SECRET = process.env.JWT_SECRET || "cok_gizli_super_anahtar_123";
 
-    // 1. VERİLERİ VERİTABANINDAN ÇEKME (GET)
-    if (req.method === "GET") {
-      const data = await collection.find({}).toArray();
-      return res.status(200).json(data);
-    } 
-    
-    // 2. YENİ KAYIT EKLEME VEYA DÜZENLEME (POST)
-    if (req.method === "POST") {
-      const transactionData = req.body;
-      
-      if (transactionData.id) {
-        // Eğer ID varsa, bu bir düzenleme işlemidir (Upsert mantığı)
-        
-        // ÇÖZÜM BURADA: _id alanını updateData'dan ayırıyoruz
-        const { _id, ...updateData } = transactionData;
-        
-        await collection.updateOne(
-          { id: transactionData.id },
-          { $set: updateData }, // Sadece _id içermeyen alanları güncelliyoruz
-          { upsert: true }
-        );
-        return res.status(200).json({ success: true, data: transactionData });
-      } else {
-        // ID yoksa yeni kayıt oluşturuluyor demektir
-        transactionData.id = Date.now().toString();
-        await collection.insertOne(transactionData);
-        return res.status(201).json({ success: true, data: transactionData });
-      }
-    }
-
-    // 3. VERİTABANINDAN SİLME (DELETE)
-    if (req.method === "DELETE") {
-      const { id } = req.query;
-      if (!id) {
-        return res.status(400).json({ message: "ID parametresi eksik!" });
-      }
-      
-      await collection.deleteOne({ id: id });
-      return res.status(200).json({ success: true });
-    }
-    
-    return res.status(405).json({ message: "Geçersiz metod" });
-  } catch (error) {
-    console.error("Veritabanı hatası:", error);
-    return res.status(500).json({ error: "Sunucu hatası oluştu" });
+// Güvenlik Duvarı (Middleware mantığı) - Token Doğrulama
+const authenticate = (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    throw new Error('Yetkisiz erişim');
   }
-}
+  const token = authHeader.split(' ')[1];
+  return jwt.verify(token, JWT_SECRET); // Token'ı aç ve içindeki workspaceId'yi ver
+};
+
+module.exports = async (req, res) => {
+  try {
+    await dbConnect();
+    
+    // 1. Kapıdaki Güvenlik: Bileti kontrol et
+    let userContext;
+    try {
+      userContext = authenticate(req);
+    } catch (err) {
+      return res.status(401).json({ error: "Lütfen giriş yapın." });
+    }
+
+    // 2. GET İsteği: Verileri getir
+    if (req.method === 'GET') {
+      // MULTI-TENANT SİHRİ BURASI: Sadece token'ın içindeki workspaceId'ye ait verileri çek!
+      const transactions = await Transaction.find({ workspaceId: userContext.workspaceId });
+      return res.status(200).json(transactions);
+    }
+
+    // 3. POST İsteği: Yeni veri ekle
+    if (req.method === 'POST') {
+      const { amount, type, date, description, categoryId } = req.body;
+      
+      const newTrans = await Transaction.create({
+        amount, type, date, description, categoryId,
+        workspaceId: userContext.workspaceId, // Veriyi o kişinin odasına mühürle
+        createdBy: userContext.userId
+      });
+      
+      return res.status(201).json(newTrans);
+    }
+
+    // 4. DELETE İsteği... vb.
+
+  } catch (error) {
+    console.error("İşlem Hatası:", error);
+    res.status(500).json({ error: "Sunucu hatası" });
+  }
+};
