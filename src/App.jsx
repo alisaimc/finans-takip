@@ -1722,11 +1722,12 @@ export default function App() {
                   Mevcut verilerinize güvenli bir şekilde erişmek için lütfen
                   oturum açın.
                 </p>
+                {/* uppercase class'ı silindi, metin GİRİŞ YAP olarak elle yazıldı */}
                 <button
                   onClick={() => setIsLoginView(true)}
-                  className="px-12 py-3.5 rounded-full border border-white/50 hover:border-white hover:bg-white hover:text-indigo-600 font-black tracking-widest transition-all uppercase text-sm shadow-lg"
+                  className="px-12 py-3.5 rounded-full border border-white/50 hover:border-white hover:bg-white hover:text-indigo-600 font-black tracking-widest transition-all text-sm shadow-lg"
                 >
-                  Giriş Yap
+                  GİRİŞ YAP
                 </button>
               </div>
 
@@ -1739,11 +1740,12 @@ export default function App() {
                   Henüz bir hesabınız yoksa, hemen ücretsiz oluşturun ve
                   yönetime başlayın.
                 </p>
+                {/* uppercase class'ı silindi, metin KAYIT OL olarak elle yazıldı */}
                 <button
                   onClick={() => setIsLoginView(false)}
-                  className="px-12 py-3.5 rounded-full border border-white/50 hover:border-white hover:bg-white hover:text-violet-600 font-black tracking-widest transition-all uppercase text-sm shadow-lg"
+                  className="px-12 py-3.5 rounded-full border border-white/50 hover:border-white hover:bg-white hover:text-violet-600 font-black tracking-widest transition-all text-sm shadow-lg"
                 >
-                  Kayıt Ol
+                  KAYIT OL
                 </button>
               </div>
             </div>
