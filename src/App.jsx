@@ -538,9 +538,7 @@ export default function App() {
       const fetchTransactions = async () => {
         try {
           const response = await fetch("/api/transaction", {
-            headers: {
-              Authorization: `Bearer ${token}`, // Backend'e kim olduğumuzu kanıtlıyoruz
-            },
+            headers: { Authorization: `Bearer ${token}` },
           });
           if (response.ok) {
             const data = await response.json();
@@ -554,9 +552,7 @@ export default function App() {
       const fetchCategories = async () => {
         try {
           const response = await fetch("/api/category", {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
+            headers: { Authorization: `Bearer ${token}` },
           });
           if (response.ok) {
             const data = await response.json();
@@ -570,6 +566,11 @@ export default function App() {
       if (token) {
         fetchTransactions();
         fetchCategories();
+
+        // YENİ EKLENDİ: Eğer kullanıcı Admin sekmesine geçerse listeyi arka planda tazele
+        if (activeTab === "admin") {
+          fetchUsers();
+        }
       }
 
       if (
@@ -964,18 +965,22 @@ export default function App() {
       const data = await response.json();
 
       if (response.ok) {
-        // YENİ EKLENEN: Yeni kullanıcıya geçmeden hemen önce eski listeleri temizle
+        // Yeni kullanıcıya geçmeden hemen önce eski listeleri temizle
         setTransactions([]);
         setCategories([]);
         setAppUsers([]);
 
-        // 2. Giriş başarılıysa Token ve Kullanıcı bilgilerini al
+        // Giriş başarılıysa Token ve Kullanıcı bilgilerini al
         const sessionUser = data.user;
         const token = data.token;
 
-        setCurrentUser(sessionUser);
+        // Bilgileri yerel hafızaya yaz ve oturumu başlat
         localStorage.setItem("app_currentUser_v2", JSON.stringify(sessionUser));
         localStorage.setItem("app_token", token);
+        setCurrentUser(sessionUser);
+
+        // YENİ EKLENDİ: Sisteme giriş yapar yapmaz kullanıcıları hemen çek!
+        fetchUsers();
 
         const savedBg = localStorage.getItem("app_system_bg_color");
         if (savedBg) setSystemBgColor(savedBg);
