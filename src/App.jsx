@@ -823,83 +823,98 @@ export default function App() {
   };
   const closeForm = () => setIsFormOpen(false);
 
-  // --- KATEGORİ ---
+  // --- KATEGORİ EKLEME ---
   const handleCategorySubmit = async (e) => {
     e.preventDefault();
     if (!categoryForm.name.trim()) return;
 
     const newCategory = {
       ...categoryForm,
-      id: categoryForm.id || Date.now().toString(),
-      // SADECE toUpperCase DEĞİL, toLocaleUpperCase KULLANILMALI
       name: categoryForm.name.toLocaleUpperCase("tr-TR"),
     };
 
     try {
+      // 1. BİLETİ AL (Token)
+      const token = localStorage.getItem("app_token");
+
+      // 2. BİLETİ GÖSTEREREK API'YE İSTEK AT
       const response = await fetch("/api/category", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // Güvenlik duvarını geçmek için bilet
+        },
         body: JSON.stringify(newCategory),
       });
 
       if (response.ok) {
+        // Backend'den veritabanına işlenmiş gerçek kategoriyi al
+        const addedCategory = await response.json();
+
         let updatedCats = categoryForm.id
           ? categories.map((c) =>
-              String(c.id) === String(categoryForm.id) ? newCategory : c,
+              String(c._id || c.id) === String(categoryForm.id)
+                ? addedCategory
+                : c,
             )
-          : [...categories, newCategory];
+          : [...categories, addedCategory];
+
         setCategories(updatedCats);
         setCategoryForm({ id: null, name: "", type: "GİDER" });
         showAlert(
           categoryForm.id
             ? "Kategori başarıyla güncellendi!"
-            : "Kategori başarıyla eklendi!",
+            : "Kategori veritabanına başarıyla eklendi!",
         );
       } else {
-        throw new Error("API Hatası");
+        throw new Error("API Hatası: Yetkisiz erişim");
       }
     } catch (error) {
-      console.warn("Kategori API bulunamadı, yerel belleğe eklendi.", error);
-      let updatedCats = categoryForm.id
-        ? categories.map((c) =>
-            String(c.id) === String(categoryForm.id) ? newCategory : c,
-          )
-        : [...categories, newCategory];
-      setCategories(updatedCats);
-      setCategoryForm({ id: null, name: "", type: "GİDER" });
+      console.error("Kategori eklenemedi:", error);
       showAlert(
-        categoryForm.id
-          ? "Kategori güncellendi! (Yerel Test)"
-          : "Kategori eklendi! (Yerel Test)",
+        "Kategori eklenirken hata oluştu. Oturumunuzun açık olduğundan emin olun.",
       );
     }
   };
 
+  // --- KATEGORİ SİLME ---
   const handleDeleteCategory = (id) => {
-    showConfirm("Bu kategoriyi silmek istediğinize emin misiniz?", async () => {
-      try {
-        const response = await fetch(`/api/category?id=${id}`, {
-          method: "DELETE",
-        });
-        if (response.ok) {
-          const updatedCats = categories.filter(
-            (c) => String(c.id) !== String(id),
-          );
-          setCategories(updatedCats);
+    showConfirm(
+      "Bu kategoriyi tamamen silmek istediğinize emin misiniz?",
+      async () => {
+        try {
+          const token = localStorage.getItem("app_token"); // BİLETİ AL
+
+          const response = await fetch(`/api/category?id=${id}`, {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${token}`, // BİLETİ GÖSTER
+            },
+          });
+
+          if (response.ok) {
+            const updatedCats = categories.filter(
+              (c) => String(c._id || c.id) !== String(id),
+            );
+            setCategories(updatedCats);
+            closeDialog();
+            setTimeout(
+              () => showAlert("Kategori veritabanından başarıyla silindi!"),
+              200,
+            );
+          } else {
+            throw new Error("API Sunucu Hatası");
+          }
+        } catch (error) {
+          console.error("Silme hatası:", error);
           closeDialog();
-          setTimeout(() => showAlert("Kategori başarıyla silindi!"), 200);
-        } else {
-          throw new Error("API Sunucu Hatası");
+          setTimeout(
+            () => showAlert("Silme işlemi başarısız. Yetkiniz olmayabilir."),
+            200,
+          );
         }
-      } catch (error) {
-        const updatedCats = categories.filter(
-          (c) => String(c.id) !== String(id),
-        );
-        setCategories(updatedCats);
-        closeDialog();
-        setTimeout(() => showAlert("Kategori silindi! (Yerel Test)"), 200);
-      }
-    });
+      },
+    );
   };
 
   const handleEditCategory = (category) => {
@@ -2106,7 +2121,6 @@ export default function App() {
 
               <div className="space-y-4">
                 <div>
-                  {/* uppercase sınıfı silindi, metin elle büyük yazıldı */}
                   <h3 className="text-sm font-bold text-red-600 mb-3 tracking-wider border-b border-slate-100 pb-2">
                     GİDER KATEGORİLERİ
                   </h3>
@@ -2115,7 +2129,7 @@ export default function App() {
                       .filter((c) => c.type === "GİDER")
                       .map((c) => (
                         <div
-                          key={c.id}
+                          key={c._id || c.id}
                           className="group relative flex items-center gap-1 bg-white border border-slate-200 px-3 py-1.5 rounded-lg text-sm text-slate-700 hover:border-slate-300 shadow-sm transition-all font-medium"
                         >
                           <span>{c.name}</span>
@@ -2127,7 +2141,9 @@ export default function App() {
                               <Edit2 size={14} />
                             </button>
                             <button
-                              onClick={() => handleDeleteCategory(c.id)}
+                              onClick={() =>
+                                handleDeleteCategory(c._id || c.id)
+                              }
                               className="text-slate-400 hover:text-red-600 p-1"
                             >
                               <Trash2 size={14} />
@@ -2138,7 +2154,6 @@ export default function App() {
                   </div>
                 </div>
                 <div className="pt-4">
-                  {/* uppercase sınıfı silindi, metin elle büyük yazıldı */}
                   <h3 className="text-sm font-bold text-green-600 mb-3 tracking-wider border-b border-slate-100 pb-2">
                     GELİR KATEGORİLERİ
                   </h3>
@@ -2147,7 +2162,7 @@ export default function App() {
                       .filter((c) => c.type === "GELİR")
                       .map((c) => (
                         <div
-                          key={c.id}
+                          key={c._id || c.id}
                           className="group relative flex items-center gap-1 bg-white border border-slate-200 px-3 py-1.5 rounded-lg text-sm text-slate-700 hover:border-slate-300 shadow-sm transition-all font-medium"
                         >
                           <span>{c.name}</span>
@@ -2159,7 +2174,9 @@ export default function App() {
                               <Edit2 size={14} />
                             </button>
                             <button
-                              onClick={() => handleDeleteCategory(c.id)}
+                              onClick={() =>
+                                handleDeleteCategory(c._id || c.id)
+                              }
                               className="text-slate-400 hover:text-red-600 p-1"
                             >
                               <Trash2 size={14} />
