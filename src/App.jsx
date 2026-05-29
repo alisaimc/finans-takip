@@ -389,9 +389,7 @@ const InteractiveDateClock = () => {
     </div>
   );
 };
-// Auth States
-const [isLoginView, setIsLoginView] = useState(true); // true = Giriş Ekranı, false = Kayıt Ekranı
-const [showPassword, setShowPassword] = useState(false);
+
 export default function App() {
   // --- STATE ---
   const [appUsers, setAppUsers] = useState([]);
@@ -412,6 +410,7 @@ export default function App() {
   const [selectedYear, setSelectedYear] = useState(String(currentYear));
 
   // Form States
+
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formData, setFormData] = useState({
     id: null,
@@ -429,8 +428,9 @@ export default function App() {
   });
 
   // Auth States
-  const [showPassword, setShowPassword] = useState(false);
 
+  const [isLoginView, setIsLoginView] = useState(true); // EKSİK OLAN BUYDU, BURAYA EKLENDİ
+  const [showPassword, setShowPassword] = useState(false);
   // Profile & Admin States
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [profileForm, setProfileForm] = useState({
