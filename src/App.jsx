@@ -2405,22 +2405,26 @@ export default function App() {
                           />
                         </td>
 
-                        {/* 3. ŞİFRE GÜNCELLEME */}
+                        {/* 3. ŞİFRE GÜNCELLEME (GÖRÜNÜM DÜZELTİLDİ) */}
                         <td className="px-4 py-3 whitespace-nowrap">
                           <input
                             type="text"
-                            defaultValue={u.password}
-                            onBlur={(e) =>
-                              handleAdminUpdateUser(
-                                u.id,
-                                "password",
-                                e.target.value,
-                              )
-                            }
-                            className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm w-32 focus:ring-1 focus:ring-indigo-500 outline-none font-medium text-slate-600 bg-transparent"
+                            placeholder="Yeni Şifre Ata" // Kullanıcıyı yönlendiren metin
+                            defaultValue="" // ŞİFRE BOŞ GELMELİ
+                            onBlur={(e) => {
+                              // Eğer input'a yeni bir şey yazıldıysa şifreyi güncelle
+                              if (e.target.value.trim() !== "") {
+                                handleAdminUpdateUser(
+                                  u.id,
+                                  "password",
+                                  e.target.value,
+                                );
+                                e.target.value = ""; // Güncelleme sonrası alanı tekrar temizle
+                              }
+                            }}
+                            className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm w-32 focus:ring-1 focus:ring-indigo-500 outline-none font-medium text-slate-600 bg-transparent placeholder:text-slate-400"
                           />
                         </td>
-
                         {/* 4. SİLME BUTONU */}
                         <td className="px-4 py-3 whitespace-nowrap text-right">
                           <button
