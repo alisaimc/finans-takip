@@ -1455,182 +1455,303 @@ export default function App() {
             from { opacity: 0; transform: translateY(40px); }
             to { opacity: 1; transform: translateY(0); }
           }
-          .anim-slide-up {
-            animation: slide-up-fade 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-          }
+          .anim-slide-up { animation: slide-up-fade 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
           .anim-blob-1 { animation: spin-slow 15s linear infinite; }
           .anim-blob-2 { animation: spin-slow 20s linear infinite reverse; }
-          
-          /* 3D Animasyonlar için özel classlar */
           .preserve-3d { transform-style: preserve-3d; }
           .backface-hidden { backface-visibility: hidden; }
           .rotate-y-180 { transform: rotateY(180deg); }
         `}</style>
 
-        {/* 3D KART KONTEYNERİ */}
-        <div className="anim-slide-up relative w-full max-w-md z-10">
-          {/* DÖNEN EKSEN */}
+        {/* ========================================================== */}
+        {/* MOBİL GÖRÜNÜM: 3D KART ÇEVİRME (Sadece küçük ekranlarda) */}
+        {/* ========================================================== */}
+        <div className="anim-slide-up relative w-full max-w-md z-10 block md:hidden">
           <div
             className={`relative w-full h-[620px] transition-transform duration-1000 ease-[cubic-bezier(0.34,1.56,0.64,1)] preserve-3d ${!isLoginView ? "rotate-y-180" : ""}`}
           >
-            {/* ==================================================== */}
-            {/* ÖN YÜZ: GİRİŞ YAP EKRANI */}
-            {/* ==================================================== */}
+            {/* ÖN YÜZ: GİRİŞ YAP */}
             <div className="absolute inset-0 w-full h-full bg-white/95 backdrop-blur-xl p-6 sm:p-10 rounded-[2.5rem] shadow-2xl shadow-indigo-900/20 flex flex-col border border-white/20 backface-hidden">
               <div className="relative w-20 h-20 mx-auto mb-8 mt-2 shrink-0 group">
-                <div className="absolute inset-0 bg-indigo-500 rounded-[1.5rem] blur-xl opacity-40 group-hover:opacity-60 transition-opacity duration-500"></div>
-                <div className="relative flex items-center justify-center w-full h-full bg-gradient-to-br from-indigo-600 to-violet-600 text-white rounded-[1.5rem] shadow-inner transform -rotate-6 group-hover:rotate-0 group-hover:scale-105 transition-all duration-500">
+                <div className="absolute inset-0 bg-indigo-500 rounded-[1.5rem] blur-xl opacity-40"></div>
+                <div className="relative flex items-center justify-center w-full h-full bg-gradient-to-br from-indigo-600 to-violet-600 text-white rounded-[1.5rem] shadow-inner transform -rotate-6">
                   <Wallet size={36} />
                 </div>
               </div>
-
               <h1 className="text-3xl font-black text-center text-slate-800 mb-2 tracking-tight">
                 Hoş Geldiniz
               </h1>
               <p className="text-center text-slate-500 mb-8 font-medium text-sm">
                 Finans Takip sistemine giriş yapın
               </p>
-
               <form onSubmit={handleAuth} className="space-y-4 flex-1">
                 <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-indigo-600 transition-colors z-10">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
                     <User size={22} />
                   </div>
                   <input
                     type="text"
                     name="username"
                     required
-                    className="w-full pl-12 pr-4 py-4 rounded-2xl border-0 ring-1 ring-slate-200 !bg-slate-50 focus:!bg-white focus:ring-2 focus:ring-indigo-600 focus:scale-[1.02] outline-none transition-all duration-300 font-bold text-slate-800 text-[16px] shadow-sm"
+                    className="w-full pl-12 pr-4 py-4 rounded-2xl border-0 ring-1 ring-slate-200 !bg-slate-50 focus:!bg-white focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-800"
                     placeholder="Kullanıcı Adı"
                     defaultValue="admin"
                   />
                 </div>
-
                 <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-indigo-600 transition-colors z-10">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
                     <Lock size={22} />
                   </div>
                   <input
                     type={showPassword ? "text" : "password"}
                     name="password"
                     required
-                    className="w-full pl-12 pr-12 py-4 rounded-2xl border-0 ring-1 ring-slate-200 !bg-slate-50 focus:!bg-white focus:ring-2 focus:ring-indigo-600 focus:scale-[1.02] outline-none transition-all duration-300 font-bold text-slate-800 text-[16px] shadow-sm"
+                    className="w-full pl-12 pr-12 py-4 rounded-2xl border-0 ring-1 ring-slate-200 !bg-slate-50 focus:!bg-white focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-800"
                     placeholder="Şifre"
                     defaultValue="123"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-indigo-600 transition-colors z-10 p-2 hover:scale-110"
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 p-2"
                   >
                     {showPassword ? <EyeOff size={22} /> : <Eye size={22} />}
                   </button>
                 </div>
-
-                <div className="flex justify-end pt-1 pb-2">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      showAlert("Sistem yöneticisi ile iletişime geçin.")
-                    }
-                    className="text-sm font-bold text-indigo-600 hover:text-indigo-800 transition-colors active:scale-95"
-                  >
-                    Şifremi Unuttum
-                  </button>
-                </div>
-
                 <button
                   type="submit"
-                  className="w-full bg-slate-800 text-white py-4 rounded-2xl font-black text-[16px] shadow-lg shadow-slate-900/20 active:scale-95 hover:scale-[1.02] hover:bg-slate-900 transition-all duration-300"
+                  className="w-full bg-slate-800 text-white py-4 rounded-2xl font-black mt-6 shadow-lg"
                 >
                   Giriş Yap
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsLoginView(false)}
-                  className="w-full bg-indigo-50 text-indigo-600 py-4 rounded-2xl font-black text-[16px] active:scale-95 hover:scale-[1.02] hover:bg-indigo-100 transition-all duration-300 mt-3 border border-indigo-100"
+                  className="w-full bg-indigo-50 text-indigo-600 py-4 rounded-2xl font-black mt-3"
                 >
                   Yeni Hesap Oluştur
                 </button>
               </form>
             </div>
 
-            {/* ==================================================== */}
-            {/* ARKA YÜZ: YENİ HESAP OLUŞTUR EKRANI */}
-            {/* ==================================================== */}
+            {/* ARKA YÜZ: KAYIT OL */}
             <div className="absolute inset-0 w-full h-full bg-white/95 backdrop-blur-xl p-6 sm:p-10 rounded-[2.5rem] shadow-2xl shadow-indigo-900/20 flex flex-col border border-white/20 backface-hidden rotate-y-180">
               <div className="relative w-20 h-20 mx-auto mb-8 mt-2 shrink-0 group">
-                <div className="absolute inset-0 bg-violet-500 rounded-[1.5rem] blur-xl opacity-40 group-hover:opacity-60 transition-opacity duration-500"></div>
-                <div className="relative flex items-center justify-center w-full h-full bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white rounded-[1.5rem] shadow-inner transform rotate-6 group-hover:rotate-0 group-hover:scale-105 transition-all duration-500">
+                <div className="absolute inset-0 bg-violet-500 rounded-[1.5rem] blur-xl opacity-40"></div>
+                <div className="relative flex items-center justify-center w-full h-full bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white rounded-[1.5rem] shadow-inner transform rotate-6">
                   <User size={36} />
                 </div>
               </div>
-
               <h1 className="text-3xl font-black text-center text-slate-800 mb-2 tracking-tight">
                 Kayıt Ol
               </h1>
               <p className="text-center text-slate-500 mb-8 font-medium text-sm">
                 Sisteme katılmak için bilgilerinizi girin
               </p>
-
               <form
                 onSubmit={handleRegisterSubmit}
                 className="space-y-4 flex-1"
               >
                 <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-violet-600 transition-colors z-10">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
                     <User size={22} />
                   </div>
                   <input
                     type="text"
                     name="reg_username"
                     required
-                    className="w-full pl-12 pr-4 py-4 rounded-2xl border-0 ring-1 ring-slate-200 !bg-slate-50 focus:!bg-white focus:ring-2 focus:ring-violet-600 focus:scale-[1.02] outline-none transition-all duration-300 font-bold text-slate-800 text-[16px] shadow-sm"
+                    className="w-full pl-12 pr-4 py-4 rounded-2xl border-0 ring-1 ring-slate-200 !bg-slate-50 focus:!bg-white focus:ring-2 focus:ring-violet-600 outline-none font-bold text-slate-800"
                     placeholder="Kullanıcı Adı"
                   />
                 </div>
-
                 <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-violet-600 transition-colors z-10">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
                     <Lock size={22} />
                   </div>
                   <input
                     type={showPassword ? "text" : "password"}
                     name="reg_password"
                     required
-                    className="w-full pl-12 pr-12 py-4 rounded-2xl border-0 ring-1 ring-slate-200 !bg-slate-50 focus:!bg-white focus:ring-2 focus:ring-violet-600 focus:scale-[1.02] outline-none transition-all duration-300 font-bold text-slate-800 text-[16px] shadow-sm"
+                    className="w-full pl-12 pr-12 py-4 rounded-2xl border-0 ring-1 ring-slate-200 !bg-slate-50 focus:!bg-white focus:ring-2 focus:ring-violet-600 outline-none font-bold text-slate-800"
                     placeholder="Güvenli Bir Şifre"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-violet-600 transition-colors z-10 p-2 hover:scale-110"
-                  >
-                    {showPassword ? <EyeOff size={22} /> : <Eye size={22} />}
-                  </button>
                 </div>
-
-                <div className="pt-6">
-                  <button
-                    type="submit"
-                    className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white py-4 rounded-2xl font-black text-[16px] shadow-lg shadow-violet-600/30 active:scale-95 hover:scale-[1.02] hover:shadow-violet-600/50 transition-all duration-300"
-                  >
-                    Kayıt İşlemini Tamamla
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsLoginView(true)}
-                    className="w-full bg-slate-50 text-slate-600 py-4 rounded-2xl font-black text-[16px] active:scale-95 hover:scale-[1.02] hover:bg-slate-100 transition-all duration-300 mt-3 border border-slate-200"
-                  >
-                    Giriş Ekranına Dön
-                  </button>
-                </div>
+                <button
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white py-4 rounded-2xl font-black mt-6 shadow-lg"
+                >
+                  Kayıt İşlemini Tamamla
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsLoginView(true)}
+                  className="w-full bg-slate-50 text-slate-600 py-4 rounded-2xl font-black mt-3 border"
+                >
+                  Giriş Ekranına Dön
+                </button>
               </form>
             </div>
           </div>
         </div>
 
-        {/* Alert Dialog Aynen Kalacak... */}
+        {/* ========================================================== */}
+        {/* MASAÜSTÜ GÖRÜNÜM: SLIDING OVERLAY (Büyük Ekranlarda) */}
+        {/* ========================================================== */}
+        <div className="anim-slide-up relative hidden md:block w-full max-w-[900px] h-[550px] bg-white rounded-[2.5rem] shadow-2xl overflow-hidden z-10 border border-white/20">
+          {/* 1. SOL FORM: GİRİŞ YAP */}
+          <div
+            className={`absolute top-0 left-0 w-1/2 h-full flex flex-col justify-center px-12 transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${!isLoginView ? "translate-x-[100%] opacity-0 z-0 pointer-events-none" : "translate-x-0 opacity-100 z-20 pointer-events-auto"}`}
+          >
+            <h1 className="text-4xl font-black text-slate-800 mb-2 text-center">
+              Giriş Yap
+            </h1>
+            <p className="text-slate-500 font-medium text-sm text-center mb-8">
+              Hesabınıza erişmek için bilgilerinizi girin.
+            </p>
+            <form onSubmit={handleAuth} className="space-y-4">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                  <User size={20} />
+                </div>
+                <input
+                  type="text"
+                  name="username"
+                  required
+                  className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-slate-50 focus:bg-white border-0 ring-1 ring-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none transition-all font-bold text-slate-800"
+                  placeholder="Kullanıcı Adı"
+                  defaultValue="admin"
+                />
+              </div>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                  <Lock size={20} />
+                </div>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  required
+                  className="w-full pl-12 pr-12 py-3.5 rounded-xl bg-slate-50 focus:bg-white border-0 ring-1 ring-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none transition-all font-bold text-slate-800"
+                  placeholder="Şifre"
+                  defaultValue="123"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-indigo-600 p-2"
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() =>
+                    showAlert("Sistem yöneticisi ile iletişime geçin.")
+                  }
+                  className="text-sm font-bold text-indigo-600 hover:text-indigo-800"
+                >
+                  Şifremi Unuttum?
+                </button>
+              </div>
+              <button
+                type="submit"
+                className="w-full bg-slate-800 text-white py-3.5 rounded-xl font-black shadow-lg shadow-slate-900/20 hover:bg-slate-900 transition-colors mt-2"
+              >
+                Giriş Yap
+              </button>
+            </form>
+          </div>
+
+          {/* 2. SAĞ FORM: KAYIT OL */}
+          <div
+            className={`absolute top-0 left-0 w-1/2 h-full flex flex-col justify-center px-12 transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${!isLoginView ? "translate-x-[100%] opacity-100 z-20 pointer-events-auto" : "translate-x-0 opacity-0 z-0 pointer-events-none"}`}
+          >
+            <h1 className="text-4xl font-black text-slate-800 mb-2 text-center">
+              Hesap Oluştur
+            </h1>
+            <p className="text-slate-500 font-medium text-sm text-center mb-8">
+              Yeni bir başlangıç için aramıza katılın.
+            </p>
+            <form onSubmit={handleRegisterSubmit} className="space-y-4">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                  <User size={20} />
+                </div>
+                <input
+                  type="text"
+                  name="reg_username"
+                  required
+                  className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-slate-50 focus:bg-white border-0 ring-1 ring-slate-200 focus:ring-2 focus:ring-violet-600 outline-none transition-all font-bold text-slate-800"
+                  placeholder="Kullanıcı Adı"
+                />
+              </div>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                  <Lock size={20} />
+                </div>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="reg_password"
+                  required
+                  className="w-full pl-12 pr-12 py-3.5 rounded-xl bg-slate-50 focus:bg-white border-0 ring-1 ring-slate-200 focus:ring-2 focus:ring-violet-600 outline-none transition-all font-bold text-slate-800"
+                  placeholder="Güvenli Bir Şifre"
+                />
+              </div>
+              <button
+                type="submit"
+                className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white py-3.5 rounded-xl font-black shadow-lg shadow-violet-600/30 hover:shadow-violet-600/50 transition-colors mt-6"
+              >
+                Kayıt İşlemini Tamamla
+              </button>
+            </form>
+          </div>
+
+          {/* 3. KAYAN RENKLİ OVERLAY KATMANI */}
+          <div
+            className={`absolute top-0 left-1/2 w-1/2 h-full overflow-hidden transition-transform duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] z-50 ${!isLoginView ? "-translate-x-full" : "translate-x-0"}`}
+          >
+            {/* Arka Planın Ters Yönde Kayması (Sabit Kalma İllüzyonu) */}
+            <div
+              className={`bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 relative -left-[100%] h-full w-[200%] transform transition-transform duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${!isLoginView ? "translate-x-1/2" : "translate-x-0"}`}
+            >
+              {/* Overlay SOL (Kayıt Ol Ekranındayken Görünen Metin) */}
+              <div
+                className={`absolute top-0 left-0 flex flex-col items-center justify-center w-1/2 h-full px-12 text-center text-white transition-transform duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${!isLoginView ? "translate-x-0" : "-translate-x-[20%]"}`}
+              >
+                <h1 className="text-4xl font-black mb-4">Tekrar Hoş Geldin!</h1>
+                <p className="text-indigo-100 font-medium mb-8 leading-relaxed">
+                  Bizimle kalmak ve tüm finansal verilerine erişmek için kendi
+                  hesabına giriş yap.
+                </p>
+                <button
+                  onClick={() => setIsLoginView(true)}
+                  className="px-10 py-3 rounded-full border-2 border-white/50 hover:border-white hover:bg-white hover:text-indigo-600 font-black tracking-wider transition-all uppercase text-sm"
+                >
+                  Giriş Yap
+                </button>
+              </div>
+
+              {/* Overlay SAĞ (Giriş Ekranındayken Görünen Metin) */}
+              <div
+                className={`absolute top-0 right-0 flex flex-col items-center justify-center w-1/2 h-full px-12 text-center text-white transition-transform duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${!isLoginView ? "translate-x-[20%]" : "translate-x-0"}`}
+              >
+                <h1 className="text-4xl font-black mb-4">Merhaba, Dostum!</h1>
+                <p className="text-indigo-100 font-medium mb-8 leading-relaxed">
+                  Kişisel bilgilerinle kayıt olarak finansal yolculuğuna bizimle
+                  hemen başla.
+                </p>
+                <button
+                  onClick={() => setIsLoginView(false)}
+                  className="px-10 py-3 rounded-full border-2 border-white/50 hover:border-white hover:bg-white hover:text-violet-600 font-black tracking-wider transition-all uppercase text-sm"
+                >
+                  Kayıt Ol
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Alert Dialog (Sabit) */}
         {dialog.isOpen && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden p-6 text-center transform scale-100 animate-[slide-up-fade_0.3s_ease-out]">
