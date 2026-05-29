@@ -1601,7 +1601,7 @@ export default function App() {
               Giriş Yap
             </h1>
             <p className="text-slate-500 font-medium text-sm text-center mb-8">
-              Hesabınıza erişmek için bilgilerinizi girin.
+              Finansal verilerinize erişmek için bilgilerinizi girin.
             </p>
             <form onSubmit={handleAuth} className="space-y-4">
               <div className="relative">
@@ -1645,7 +1645,7 @@ export default function App() {
                   }
                   className="text-sm font-bold text-indigo-600 hover:text-indigo-800"
                 >
-                  Şifremi Unuttum?
+                  Şifrenizi mi unuttunuz?
                 </button>
               </div>
               <button
@@ -1662,10 +1662,10 @@ export default function App() {
             className={`absolute top-0 left-0 w-1/2 h-full flex flex-col justify-center px-12 transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${!isLoginView ? "translate-x-[100%] opacity-100 z-20 pointer-events-auto" : "translate-x-0 opacity-0 z-0 pointer-events-none"}`}
           >
             <h1 className="text-4xl font-black text-slate-800 mb-2 text-center">
-              Hesap Oluştur
+              Hesap Oluşturun
             </h1>
             <p className="text-slate-500 font-medium text-sm text-center mb-8">
-              Yeni bir başlangıç için aramıza katılın.
+              Ücretsiz hesabınızı oluşturarak kontrolü elinize alın.
             </p>
             <form onSubmit={handleRegisterSubmit} className="space-y-4">
               <div className="relative">
@@ -1689,14 +1689,14 @@ export default function App() {
                   name="reg_password"
                   required
                   className="w-full pl-12 pr-12 py-3.5 rounded-xl bg-slate-50 focus:bg-white border-0 ring-1 ring-slate-200 focus:ring-2 focus:ring-violet-600 outline-none transition-all font-bold text-slate-800"
-                  placeholder="Güvenli Bir Şifre"
+                  placeholder="Güvenli Şifre"
                 />
               </div>
               <button
                 type="submit"
                 className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white py-3.5 rounded-xl font-black shadow-lg shadow-violet-600/30 hover:shadow-violet-600/50 transition-colors mt-6"
               >
-                Kayıt İşlemini Tamamla
+                Hesap Oluştur
               </button>
             </form>
           </div>
@@ -1713,14 +1713,18 @@ export default function App() {
               <div
                 className={`absolute top-0 left-0 flex flex-col items-center justify-center w-1/2 h-full px-12 text-center text-white transition-transform duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${!isLoginView ? "translate-x-0" : "-translate-x-[20%]"}`}
               >
-                <h1 className="text-4xl font-black mb-4">Tekrar Hoş Geldin!</h1>
+                <h1 className="text-4xl font-black mb-4">
+                  Zaten Hesabınız
+                  <br />
+                  Var Mı?
+                </h1>
                 <p className="text-indigo-100 font-medium mb-8 leading-relaxed">
-                  Bizimle kalmak ve tüm finansal verilerine erişmek için kendi
-                  hesabına giriş yap.
+                  Mevcut verilerinize güvenli bir şekilde erişmek için lütfen
+                  oturum açın.
                 </p>
                 <button
                   onClick={() => setIsLoginView(true)}
-                  className="px-10 py-3 rounded-full border-2 border-white/50 hover:border-white hover:bg-white hover:text-indigo-600 font-black tracking-wider transition-all uppercase text-sm"
+                  className="px-12 py-3.5 rounded-full border border-white/50 hover:border-white hover:bg-white hover:text-indigo-600 font-black tracking-widest transition-all uppercase text-sm shadow-lg"
                 >
                   Giriş Yap
                 </button>
@@ -1730,14 +1734,14 @@ export default function App() {
               <div
                 className={`absolute top-0 right-0 flex flex-col items-center justify-center w-1/2 h-full px-12 text-center text-white transition-transform duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${!isLoginView ? "translate-x-[20%]" : "translate-x-0"}`}
               >
-                <h1 className="text-4xl font-black mb-4">Merhaba, Dostum!</h1>
+                <h1 className="text-4xl font-black mb-4">Aramıza Katılın!</h1>
                 <p className="text-indigo-100 font-medium mb-8 leading-relaxed">
-                  Kişisel bilgilerinle kayıt olarak finansal yolculuğuna bizimle
-                  hemen başla.
+                  Henüz bir hesabınız yoksa, hemen ücretsiz oluşturun ve
+                  yönetime başlayın.
                 </p>
                 <button
                   onClick={() => setIsLoginView(false)}
-                  className="px-10 py-3 rounded-full border-2 border-white/50 hover:border-white hover:bg-white hover:text-violet-600 font-black tracking-wider transition-all uppercase text-sm"
+                  className="px-12 py-3.5 rounded-full border border-white/50 hover:border-white hover:bg-white hover:text-violet-600 font-black tracking-widest transition-all uppercase text-sm shadow-lg"
                 >
                   Kayıt Ol
                 </button>
