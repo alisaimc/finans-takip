@@ -768,12 +768,18 @@ export default function App() {
   const handleDeleteTransaction = (id) => {
     showConfirm("Bu kaydı silmek istediğinize emin misiniz?", async () => {
       try {
+        const token = localStorage.getItem("app_token"); // BİLETİ AL
+
         const response = await fetch(`/api/transaction?id=${id}`, {
           method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`, // BİLETİ API'YE GÖSTER
+          },
         });
+
         if (response.ok) {
           const updatedList = transactions.filter(
-            (t) => String(t.id) !== String(id),
+            (t) => String(t._id || t.id) !== String(id),
           );
           setTransactions(updatedList);
           closeDialog();
@@ -782,16 +788,13 @@ export default function App() {
             200,
           );
         } else {
-          throw new Error("API Sunucu Hatası");
+          throw new Error("API Sunucu Hatası veya Yetkisiz İşlem");
         }
       } catch (error) {
-        const updatedList = transactions.filter(
-          (t) => String(t.id) !== String(id),
-        );
-        setTransactions(updatedList);
+        console.error("Silme Hatası:", error);
         closeDialog();
         setTimeout(
-          () => showAlert("Kayıt başarıyla silindi! (Yerel Test)"),
+          () => showAlert("Kayıt silinemedi. Lütfen yetkinizi kontrol edin."),
           200,
         );
       }
@@ -814,33 +817,33 @@ export default function App() {
   };
   const closeForm = () => setIsFormOpen(false);
 
-  // --- KATEGORİ EKLEME ---
+  // --- KATEGORİ EKLEME VE GÜNCELLEME ---
   const handleCategorySubmit = async (e) => {
     e.preventDefault();
     if (!categoryForm.name.trim()) return;
 
-    const newCategory = {
+    const payload = {
       ...categoryForm,
       name: categoryForm.name.toLocaleUpperCase("tr-TR"),
     };
 
     try {
-      // 1. BİLETİ AL (Token)
       const token = localStorage.getItem("app_token");
 
-      // 2. BİLETİ GÖSTEREREK API'YE İSTEK AT
       const response = await fetch("/api/category", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`, // Güvenlik duvarını geçmek için bilet
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(newCategory),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
-        // Backend'den veritabanına işlenmiş gerçek kategoriyi al
         const addedCategory = await response.json();
+
+        // MongoDB'nin _id değerini React'in id değerine eşitliyoruz
+        addedCategory.id = addedCategory._id;
 
         let updatedCats = categoryForm.id
           ? categories.map((c) =>
@@ -858,13 +861,11 @@ export default function App() {
             : "Kategori veritabanına başarıyla eklendi!",
         );
       } else {
-        throw new Error("API Hatası: Yetkisiz erişim");
+        throw new Error("API Hatası");
       }
     } catch (error) {
-      console.error("Kategori eklenemedi:", error);
-      showAlert(
-        "Kategori eklenirken hata oluştu. Oturumunuzun açık olduğundan emin olun.",
-      );
+      console.error("Kategori işlemi hatası:", error);
+      showAlert("Kategori işlemi sırasında hata oluştu.");
     }
   };
 
@@ -910,7 +911,7 @@ export default function App() {
 
   const handleEditCategory = (category) => {
     setCategoryForm({
-      id: category.id,
+      id: category._id || category.id, // MongoDB'nin _id formatını da yakalaması eklendi
       name: category.name,
       type: category.type,
     });

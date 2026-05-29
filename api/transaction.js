@@ -21,26 +21,28 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: "Lütfen giriş yapın." });
     }
 
+    // 1. LİSTELEME
     if (req.method === 'GET') {
       const transactions = await Transaction.find({ workspaceId: userContext.workspaceId });
       return res.status(200).json(transactions);
     }
 
+    // 2. EKLEME VEYA GÜNCELLEME (POST)
     if (req.method === 'POST') {
-      // _id parametresini de yakalıyoruz (Güncelleme işlemi için)
+      // Frontend'den gelen id veya _id'yi yakala
       const { id, _id, amount, type, date, description, categoryId } = req.body;
       const targetId = id || _id;
       
       if (targetId) {
-        // ID VARSA: GÜNCELLEME YAP
+        // EĞER ID VARSA: GÜNCELLE (Düzenleme İşlemi)
         const updatedTrans = await Transaction.findOneAndUpdate(
-          { _id: targetId, workspaceId: userContext.workspaceId },
+          { _id: targetId, workspaceId: userContext.workspaceId }, // Sadece kendi workspace'indeki kaydı güncelleyebilir
           { amount, type, date, description, categoryId },
           { new: true }
         );
         return res.status(200).json(updatedTrans);
       } else {
-        // ID YOKSA: YENİ KAYIT EKLE
+        // EĞER ID YOKSA: YENİ KAYIT EKLE
         const newTrans = await Transaction.create({
           amount, type, date, description, categoryId,
           workspaceId: userContext.workspaceId,
@@ -50,10 +52,14 @@ export default async function handler(req, res) {
       }
     }
 
+    // 3. SİLME (DELETE)
     if (req.method === 'DELETE') {
+      // Sadece kendi workspace'indeki bir işlemi silebilir
       await Transaction.findOneAndDelete({ _id: req.query.id, workspaceId: userContext.workspaceId });
-      return res.status(200).json({ message: "Silindi" });
+      return res.status(200).json({ message: "Başarıyla silindi" });
     }
+
+    return res.status(405).json({ message: "Geçersiz metod" });
 
   } catch (error) {
     console.error("İşlem Hatası:", error);
