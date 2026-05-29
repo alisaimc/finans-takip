@@ -1,6 +1,6 @@
-const dbConnect = require('./db');
-const { Category } = require('./models');
-const jwt = require('jsonwebtoken');
+import dbConnect from './db.js';
+import { Category } from './models.js';
+import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || "saim_cok_gizli_anahtar_2026_!?";
 
@@ -10,13 +10,12 @@ const authenticate = (req) => {
   return jwt.verify(token, JWT_SECRET);
 };
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   try {
     await dbConnect();
     const userContext = authenticate(req);
 
     if (req.method === 'GET') {
-      // Sadece bu çalışma alanının kategorilerini getir
       const categories = await Category.find({ workspaceId: userContext.workspaceId });
       return res.status(200).json(categories);
     }
@@ -39,4 +38,4 @@ module.exports = async (req, res) => {
   } catch (error) {
     res.status(401).json({ error: "Yetkisiz işlem veya sunucu hatası" });
   }
-};
+}

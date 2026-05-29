@@ -1,6 +1,5 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
-// Vercel çevre değişkenlerinden (Environment Variables) MongoDB adresini alır
 const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {
@@ -13,7 +12,7 @@ if (!cached) {
   cached = global.mongoose = { conn: null, promise: null };
 }
 
-async function dbConnect() {
+export default async function dbConnect() {
   if (cached.conn) {
     return cached.conn;
   }
@@ -21,7 +20,7 @@ async function dbConnect() {
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
-      serverSelectionTimeoutMS: 5000, // Takılmaları önler
+      serverSelectionTimeoutMS: 5000,
     };
 
     cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
@@ -38,5 +37,3 @@ async function dbConnect() {
 
   return cached.conn;
 }
-
-module.exports = dbConnect;
