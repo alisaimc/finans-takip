@@ -699,7 +699,9 @@ export default function App() {
 
     const formYearMonth = formData.date.substring(0, 7);
     const isDuplicate = transactions.some((t) => {
-      if (formData.id && String(t.id) === String(formData.id)) return false;
+      // MongoDB'den gelen _id değerini de kontrol et
+      if (formData.id && String(t._id || t.id) === String(formData.id))
+        return false;
       const tYearMonth = t.date ? t.date.substring(0, 7) : "";
       return (
         String(t.categoryId) === String(formData.categoryId) &&
@@ -712,60 +714,54 @@ export default function App() {
     }
 
     const selectedCat = categories.find(
-      (c) => String(c.id) === String(formData.categoryId),
+      (c) => String(c._id || c.id) === String(formData.categoryId),
     );
-    const newTransaction = {
+
+    const payload = {
       ...formData,
-      id: formData.id || Date.now().toString(),
       categoryName: selectedCat ? selectedCat.name : formData.categoryId,
-      createdBy: currentUser.id,
     };
 
     try {
-      const token = localStorage.getItem("app_token"); // Token'ı al
+      const token = localStorage.getItem("app_token");
 
       const response = await fetch("/api/transaction", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`, // API'ye bileti sun
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(newTransaction),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
-        // ... (Geri kalan kodunuz aynı, fetchUsers / setTransactions kısımları)
+        // Backend'den veritabanına yazılmış GERÇEK veriyi al (içinde _id var)
+        const savedTransaction = await response.json();
+
+        // Ekranda kategori adının görünmesi için ismini geri ekliyoruz
+        savedTransaction.categoryName = payload.categoryName;
+        savedTransaction.id = savedTransaction._id;
+
         let updatedList = formData.id
           ? transactions.map((t) =>
-              String(t.id) === String(formData.id) ? newTransaction : t,
+              String(t._id || t.id) === String(formData.id)
+                ? savedTransaction
+                : t,
             )
-          : [...transactions, newTransaction];
+          : [...transactions, savedTransaction];
 
         setTransactions(updatedList);
         closeForm();
         showAlert(
           formData.id
             ? "Kayıt başarıyla güncellendi!"
-            : "Kayıt başarıyla buluta eklendi!",
+            : "Kayıt başarıyla eklendi!",
         );
       } else {
         throw new Error("Yetkisiz veya API Hatası");
       }
     } catch (error) {
       console.warn("API bulunamadı, kayıt yerel belleğe eklendi.", error);
-      let updatedList = formData.id
-        ? transactions.map((t) =>
-            String(t.id) === String(formData.id) ? newTransaction : t,
-          )
-        : [...transactions, newTransaction];
-
-      setTransactions(updatedList);
-      closeForm();
-      showAlert(
-        formData.id
-          ? "Kayıt başarıyla güncellendi! (Yerel Test)"
-          : "Kayıt başarıyla eklendi! (Yerel Test)",
-      );
     }
   };
 
@@ -2888,17 +2884,16 @@ export default function App() {
                 <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-1">
                   {currentTypeCategories.map((c) => (
                     <button
-                      key={c.id}
+                      key={c._id || c.id}
                       type="button"
                       onClick={() =>
-                        setFormData({ ...formData, categoryId: c.id })
+                        setFormData({ ...formData, categoryId: c._id || c.id })
                       }
-                      className={`px-3 py-2 rounded-xl text-sm font-bold transition-all border ${String(formData.categoryId) === String(c.id) ? (formData.type === "GELİR" ? "bg-green-100 border-green-500 text-green-700" : "bg-red-100 border-red-500 text-red-700") : "bg-white border-slate-200 text-slate-600 hover:border-indigo-300 hover:bg-slate-50"}`}
+                      className={`px-3 py-2 rounded-xl text-sm font-bold transition-all border ${String(formData.categoryId) === String(c._id || c.id) ? (formData.type === "GELİR" ? "bg-green-100 border-green-500 text-green-700" : "bg-red-100 border-red-500 text-red-700") : "bg-white border-slate-200 text-slate-600 hover:border-indigo-300 hover:bg-slate-50"}`}
                     >
                       <div className="flex items-center gap-1">
-                        {String(formData.categoryId) === String(c.id) && (
-                          <Check size={14} />
-                        )}{" "}
+                        {String(formData.categoryId) ===
+                          String(c._id || c.id) && <Check size={14} />}{" "}
                         {c.name}
                       </div>
                     </button>
