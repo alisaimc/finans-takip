@@ -464,12 +464,20 @@ export default function App() {
   // --- KULLANICILARI VERİTABANINDAN ÇEKME FONKSİYONU ---
   const fetchUsers = async () => {
     try {
-      const response = await fetch("/api/users");
+      const token = localStorage.getItem("app_token"); // 1. BİLETİ AL
+      if (!token) return; // Bilet yoksa işlem yapma
+
+      const response = await fetch("/api/users", {
+        headers: {
+          Authorization: `Bearer ${token}`, // 2. BİLETİ GÖSTER
+        },
+      });
+
       if (response.ok) {
         const data = await response.json();
-        setAppUsers(data);
+        setAppUsers(data); // Listeyi ekrana bas
 
-        // 1. GLOBAL AYARLARI SADECE ADMİN'DEN ÇEK VE TÜM SİSTEME UYGULA
+        // Global Ayarları Uygula
         const adminUser = data.find((u) => u.role === "admin");
         if (adminUser) {
           if (adminUser.systemBgColor)
@@ -479,12 +487,14 @@ export default function App() {
           if (adminUser.systemCity) setSystemCity(adminUser.systemCity);
         }
 
-        // 2. GİRİŞ YAPAN KULLANICININ KİŞİSEL AYARLARINI (FOTO/ARKA PLAN) UYGULA
+        // Kendi Ayarlarını Uygula
         const loggedInUser = JSON.parse(
           localStorage.getItem("app_currentUser_v2"),
         );
         if (loggedInUser) {
-          const freshUserData = data.find((u) => u.id === loggedInUser.id);
+          const freshUserData = data.find(
+            (u) => String(u.id) === String(loggedInUser.id),
+          );
           if (freshUserData) {
             setCurrentUser({
               id: freshUserData.id,
@@ -495,8 +505,6 @@ export default function App() {
             });
           }
         }
-      } else {
-        throw new Error("API Hatası");
       }
     } catch (error) {
       console.error("API Hatası", error);
@@ -1241,15 +1249,19 @@ export default function App() {
 
   const handleAdminUpdateUser = async (userId, field, newValue) => {
     const targetUser = appUsers.find((u) => u.id === userId);
-    // Değer değişmediyse boşuna API'ye istek atma
     if (!targetUser || targetUser[field] === newValue) return;
 
     const updatedUser = { ...targetUser, [field]: newValue };
 
     try {
+      const token = localStorage.getItem("app_token"); // BİLETİ AL
+
       const response = await fetch("/api/users", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // BİLETİ GÖSTER
+        },
         body: JSON.stringify(updatedUser),
       });
 
@@ -1260,12 +1272,7 @@ export default function App() {
         throw new Error("API Hatası");
       }
     } catch (error) {
-      const updatedUsers = appUsers.map((u) =>
-        u.id === userId ? updatedUser : u,
-      );
-      setAppUsers(updatedUsers);
-      localStorage.setItem("app_users_v2", JSON.stringify(updatedUsers));
-      showAlert("Kullanıcı bilgisi güncellendi. (Yerel Test)");
+      showAlert("Kullanıcı güncellenirken hata oluştu.");
     }
   };
 
@@ -1277,9 +1284,15 @@ export default function App() {
       "Bu kullanıcıyı tamamen silmek istediğinize emin misiniz?",
       async () => {
         try {
+          const token = localStorage.getItem("app_token"); // BİLETİ AL
+
           const response = await fetch(`/api/users?id=${userId}`, {
             method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${token}`, // BİLETİ GÖSTER
+            },
           });
+
           if (response.ok) {
             await fetchUsers();
             closeDialog();
@@ -1291,16 +1304,15 @@ export default function App() {
             throw new Error("API Hatası");
           }
         } catch (error) {
-          const updatedUsers = appUsers.filter((u) => u.id !== userId);
-          setAppUsers(updatedUsers);
-          localStorage.setItem("app_users_v2", JSON.stringify(updatedUsers));
           closeDialog();
-          setTimeout(() => showAlert("Kullanıcı silindi! (Yerel Test)"), 200);
+          setTimeout(
+            () => showAlert("Silme işlemi başarısız. Yetkiniz olmayabilir."),
+            200,
+          );
         }
       },
     );
   };
-
   const handleCityChange = async (e) => {
     const selectedCityName = e.target.value;
     const cityObj = CITIES.find((c) => c.name === selectedCityName);
