@@ -435,8 +435,10 @@ export default function App() {
 
   // Auth States
 
-  const [isLoginView, setIsLoginView] = useState(true); // EKSİK OLAN BUYDU, BURAYA EKLENDİ
+  const [isLoginView, setIsLoginView] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+  const [registerStep, setRegisterStep] = useState(1);
+  const [tempCreds, setTempCreds] = useState({ username: "", password: "" });
   // Profile & Admin States
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [profileForm, setProfileForm] = useState({
@@ -1019,6 +1021,7 @@ export default function App() {
   // --- AUTH VE KULLANICI ---
   // --- GÜVENLİ GİRİŞ YAP (LOGIN) ---
 
+  // 1. AŞAMA: Kullanıcı hesabını oluştur
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     const username = e.target.reg_username.value.trim().toLowerCase();
@@ -1033,15 +1036,73 @@ export default function App() {
 
       const data = await response.json();
       if (response.ok) {
+        // BAŞARILI: Giriş ekranına atmak yerine 2. Aşama (Workspace) ekranına geç!
+        setTempCreds({ username, password }); // Otomatik giriş için bilgileri tut
+        setRegisterStep(2);
         showAlert(
-          "Kayıt başarılı! Şimdi oluşturduğunuz hesapla giriş yapabilirsiniz.",
+          "Kullanıcı başarıyla oluşturuldu! Şimdi ilk çalışma alanınızı (workspace) belirleyin.",
         );
-        setIsLoginView(true); // Kayıt başarılıysa animasyonla giriş ekranına geri kaydır
       } else {
         showAlert(data.error || "Kayıt başarısız!");
       }
     } catch (error) {
       showAlert("Sunucuya bağlanılamadı.");
+    }
+  };
+
+  // 2. AŞAMA: Otomatik login ol, Token'ı al ve Workspace oluşturarak sisteme gir
+  const handleInitialWorkspaceSubmit = async (e) => {
+    e.preventDefault();
+    const wsName = e.target.ws_name.value.trim();
+    const wsType = e.target.ws_type.value;
+
+    if (!wsName) return showAlert("Lütfen çalışma alanı adını girin.");
+
+    try {
+      // 1. Önce arka planda oluşturduğumuz bilgilerle Login olup Yetki(Token) alalım
+      const loginRes = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(tempCreds),
+      });
+
+      const loginData = await loginRes.json();
+      if (!loginRes.ok) throw new Error("Giriş yapılamadı.");
+
+      const token = loginData.token;
+      const sessionUser = loginData.user;
+
+      // 2. Aldığımız token ile Workspace tablosuna yeni alanı yazalım
+      const wsRes = await fetch("/api/workspaces", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ name: wsName, type: wsType }),
+      });
+
+      if (wsRes.ok) {
+        // 3. Her şey sorunsuzsa RAM'i temizleyip uygulamaya giriş yaptıralım
+        setTransactions([]);
+        setCategories([]);
+        setAppUsers([]);
+
+        localStorage.setItem("app_currentUser_v2", JSON.stringify(sessionUser));
+        localStorage.setItem("app_token", token);
+        setCurrentUser(sessionUser);
+        fetchUsers(); // Kullanıcı listesini tazele
+
+        // Formu sıfırla
+        setRegisterStep(1);
+        showAlert(
+          `Harika! '${wsName}' çalışma alanı kuruldu ve giriş yapıldı.`,
+        );
+      } else {
+        throw new Error("Workspace API Hatası");
+      }
+    } catch (error) {
+      showAlert("Kurulum sırasında hata oluştu: " + error.message);
     }
   };
 
@@ -1641,57 +1702,107 @@ export default function App() {
               <div className="relative w-20 h-20 mx-auto mb-8 mt-2 shrink-0 group">
                 <div className="absolute inset-0 bg-violet-500 rounded-[1.5rem] blur-xl opacity-40"></div>
                 <div className="relative flex items-center justify-center w-full h-full bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white rounded-[1.5rem] shadow-inner transform rotate-6">
-                  <User size={36} />
+                  {registerStep === 1 ? (
+                    <User size={36} />
+                  ) : (
+                    <Layers size={36} />
+                  )}
                 </div>
               </div>
               <h1 className="text-3xl font-black text-center text-slate-800 mb-2 tracking-tight">
-                Kayıt Ol
+                {registerStep === 1 ? "Kayıt Ol" : "Alanını Kur"}
               </h1>
               <p className="text-center text-slate-500 mb-8 font-medium text-sm">
-                Sisteme katılmak için bilgilerinizi girin
+                {registerStep === 1
+                  ? "Sisteme katılmak için bilgilerinizi girin"
+                  : "Mali verilerinizi tutacağınız alanı oluşturun"}
               </p>
-              <form
-                onSubmit={handleRegisterSubmit}
-                className="space-y-4 flex-1"
-              >
-                <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
-                    <User size={22} />
-                  </div>
-                  <input
-                    type="text"
-                    name="reg_username"
-                    required
-                    className="w-full pl-12 pr-4 py-4 rounded-2xl border-0 ring-1 ring-slate-200 !bg-slate-50 focus:!bg-white focus:ring-2 focus:ring-violet-600 outline-none font-bold text-slate-800"
-                    placeholder="Kullanıcı Adı"
-                  />
-                </div>
-                <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
-                    <Lock size={22} />
-                  </div>
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    name="reg_password"
-                    required
-                    className="w-full pl-12 pr-12 py-4 rounded-2xl border-0 ring-1 ring-slate-200 !bg-slate-50 focus:!bg-white focus:ring-2 focus:ring-violet-600 outline-none font-bold text-slate-800"
-                    placeholder="Güvenli Bir Şifre"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white py-4 rounded-2xl font-black mt-6 shadow-lg"
+
+              {/* STEP 1 VEYA STEP 2 FORMU */}
+              {registerStep === 1 ? (
+                <form
+                  onSubmit={handleRegisterSubmit}
+                  className="space-y-4 flex-1"
                 >
-                  Kayıt İşlemini Tamamla
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsLoginView(true)}
-                  className="w-full bg-slate-50 text-slate-600 py-4 rounded-2xl font-black mt-3 border"
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                      <User size={22} />
+                    </div>
+                    <input
+                      type="text"
+                      name="reg_username"
+                      required
+                      className="w-full pl-12 pr-4 py-4 rounded-2xl border-0 ring-1 ring-slate-200 !bg-slate-50 focus:!bg-white focus:ring-2 focus:ring-violet-600 outline-none font-bold text-slate-800"
+                      placeholder="Kullanıcı Adı"
+                    />
+                  </div>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                      <Lock size={22} />
+                    </div>
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      name="reg_password"
+                      required
+                      className="w-full pl-12 pr-12 py-4 rounded-2xl border-0 ring-1 ring-slate-200 !bg-slate-50 focus:!bg-white focus:ring-2 focus:ring-violet-600 outline-none font-bold text-slate-800"
+                      placeholder="Güvenli Bir Şifre"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white py-4 rounded-2xl font-black mt-6 shadow-lg"
+                  >
+                    Hesabı Oluştur ve Devam Et
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsLoginView(true);
+                      setRegisterStep(1);
+                    }}
+                    className="w-full bg-slate-50 text-slate-600 py-4 rounded-2xl font-black mt-3 border"
+                  >
+                    Giriş Ekranına Dön
+                  </button>
+                </form>
+              ) : (
+                <form
+                  onSubmit={handleInitialWorkspaceSubmit}
+                  className="space-y-4 flex-1"
                 >
-                  Giriş Ekranına Dön
-                </button>
-              </form>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                      <Layers size={22} />
+                    </div>
+                    <input
+                      type="text"
+                      name="ws_name"
+                      required
+                      className="w-full pl-12 pr-4 py-4 rounded-2xl border-0 ring-1 ring-slate-200 !bg-slate-50 focus:!bg-white focus:ring-2 focus:ring-violet-600 outline-none font-bold text-slate-800"
+                      placeholder="Alan Adı (Örn: Merkez Bütçe)"
+                    />
+                  </div>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                      <Database size={22} />
+                    </div>
+                    <select
+                      name="ws_type"
+                      className="w-full pl-12 pr-4 py-4 rounded-2xl border-0 ring-1 ring-slate-200 !bg-slate-50 focus:!bg-white focus:ring-2 focus:ring-violet-600 outline-none font-bold text-slate-800"
+                    >
+                      <option value="Finans">Bireysel Finans</option>
+                      <option value="Şirket">Şirket / Kurumsal</option>
+                      <option value="Proje">Proje Yönetimi</option>
+                    </select>
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white py-4 rounded-2xl font-black mt-6 shadow-lg"
+                  >
+                    Alanı Kur ve Giriş Yap
+                  </button>
+                </form>
+              )}
             </div>
           </div>
         </div>
@@ -1769,43 +1880,87 @@ export default function App() {
             className={`absolute top-0 left-0 w-1/2 h-full flex flex-col justify-center px-12 transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)] ${!isLoginView ? "translate-x-[100%] opacity-100 z-20 pointer-events-auto" : "translate-x-0 opacity-0 z-0 pointer-events-none"}`}
           >
             <h1 className="text-4xl font-black text-slate-800 mb-2 text-center">
-              Hesap Oluşturun
+              {registerStep === 1
+                ? "Hesap Oluşturun"
+                : "Çalışma Alanınızı Kurun"}
             </h1>
             <p className="text-slate-500 font-medium text-sm text-center mb-8">
-              Ücretsiz hesabınızı oluşturarak kontrolü elinize alın.
+              {registerStep === 1
+                ? "Ücretsiz hesabınızı oluşturarak kontrolü elinize alın."
+                : "Size özel izole veri alanınızı tanımlayın."}
             </p>
-            <form onSubmit={handleRegisterSubmit} className="space-y-4">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
-                  <User size={20} />
+
+            {registerStep === 1 ? (
+              <form onSubmit={handleRegisterSubmit} className="space-y-4">
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                    <User size={20} />
+                  </div>
+                  <input
+                    type="text"
+                    name="reg_username"
+                    required
+                    className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-slate-50 focus:bg-white border-0 ring-1 ring-slate-200 focus:ring-2 focus:ring-violet-600 outline-none transition-all font-bold text-slate-800"
+                    placeholder="Kullanıcı Adı"
+                  />
                 </div>
-                <input
-                  type="text"
-                  name="reg_username"
-                  required
-                  className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-slate-50 focus:bg-white border-0 ring-1 ring-slate-200 focus:ring-2 focus:ring-violet-600 outline-none transition-all font-bold text-slate-800"
-                  placeholder="Kullanıcı Adı"
-                />
-              </div>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
-                  <Lock size={20} />
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                    <Lock size={20} />
+                  </div>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    name="reg_password"
+                    required
+                    className="w-full pl-12 pr-12 py-3.5 rounded-xl bg-slate-50 focus:bg-white border-0 ring-1 ring-slate-200 focus:ring-2 focus:ring-violet-600 outline-none transition-all font-bold text-slate-800"
+                    placeholder="Güvenli Şifre"
+                  />
                 </div>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  name="reg_password"
-                  required
-                  className="w-full pl-12 pr-12 py-3.5 rounded-xl bg-slate-50 focus:bg-white border-0 ring-1 ring-slate-200 focus:ring-2 focus:ring-violet-600 outline-none transition-all font-bold text-slate-800"
-                  placeholder="Güvenli Şifre"
-                />
-              </div>
-              <button
-                type="submit"
-                className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white py-3.5 rounded-xl font-black shadow-lg shadow-violet-600/30 hover:shadow-violet-600/50 transition-colors mt-6"
+                <button
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white py-3.5 rounded-xl font-black shadow-lg shadow-violet-600/30 hover:shadow-violet-600/50 transition-colors mt-6"
+                >
+                  Hesap Oluştur ve Devam Et
+                </button>
+              </form>
+            ) : (
+              <form
+                onSubmit={handleInitialWorkspaceSubmit}
+                className="space-y-4"
               >
-                Hesap Oluştur
-              </button>
-            </form>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                    <Layers size={20} />
+                  </div>
+                  <input
+                    type="text"
+                    name="ws_name"
+                    required
+                    className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-slate-50 focus:bg-white border-0 ring-1 ring-slate-200 focus:ring-2 focus:ring-violet-600 outline-none transition-all font-bold text-slate-800"
+                    placeholder="Workspace Adı (Örn: Ailem)"
+                  />
+                </div>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                    <Database size={20} />
+                  </div>
+                  <select
+                    name="ws_type"
+                    className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-slate-50 focus:bg-white border-0 ring-1 ring-slate-200 focus:ring-2 focus:ring-violet-600 outline-none transition-all font-bold text-slate-800"
+                  >
+                    <option value="Finans">Bireysel Finans</option>
+                    <option value="Şirket">Şirket / Kurumsal</option>
+                    <option value="Proje">Proje Yönetimi</option>
+                  </select>
+                </div>
+                <button
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white py-3.5 rounded-xl font-black shadow-lg shadow-violet-600/30 hover:shadow-violet-600/50 transition-colors mt-6"
+                >
+                  Alanı Kur ve Başla
+                </button>
+              </form>
+            )}
           </div>
 
           {/* 3. KAYAN RENKLİ OVERLAY KATMANI */}
@@ -1831,7 +1986,10 @@ export default function App() {
                 </p>
                 {/* uppercase class'ı silindi, metin GİRİŞ YAP olarak elle yazıldı */}
                 <button
-                  onClick={() => setIsLoginView(true)}
+                  onClick={() => {
+                    setIsLoginView(true);
+                    setRegisterStep(1);
+                  }}
                   className="px-12 py-3.5 rounded-full border border-white/50 hover:border-white hover:bg-white hover:text-indigo-600 font-black tracking-widest transition-all text-sm shadow-lg"
                 >
                   GİRİŞ YAP
