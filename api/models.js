@@ -36,4 +36,11 @@ const User = mongoose.models.User || mongoose.model('User', UserSchema);
 const Category = mongoose.models.Category || mongoose.model('Category', CategorySchema);
 const Transaction = mongoose.models.Transaction || mongoose.model('Transaction', TransactionSchema);
 
+const workspaceSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  type: { type: String, required: true },
+  status: { type: String, default: "Aktif" },
+  userCount: { type: Number, default: 0 }
+}, { timestamps: true });
+
 export { Workspace, User, Category, Transaction };

@@ -396,23 +396,7 @@ export default function App() {
   // App bileşeni içine eklenecek
   const [appDomain, setAppDomain] = useState("app"); // "app" | "superadmin"
 
-  // Örnek Workspace verisi (İleride DB'den çekilecek)
-  const [workspaces, setWorkspaces] = useState([
-    {
-      id: "1",
-      name: "Merkez Ofis Bütçesi",
-      type: "Finans",
-      userCount: 3,
-      status: "Aktif",
-    },
-    {
-      id: "2",
-      name: "Yazılım Ekibi",
-      type: "Proje",
-      userCount: 5,
-      status: "Aktif",
-    },
-  ]);
+  const [workspaces, setWorkspaces] = useState([]);
   // --- STATE ---
   const [appUsers, setAppUsers] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
@@ -534,6 +518,20 @@ export default function App() {
       console.error("API Hatası", error);
     }
   };
+  const fetchWorkspaces = async () => {
+    try {
+      const token = localStorage.getItem("app_token");
+      const response = await fetch("/api/workspaces", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setWorkspaces(data);
+      }
+    } catch (error) {
+      console.error("Workspace çekme hatası", error);
+    }
+  };
 
   // --- İLK YÜKLEME VE SİSTEM AYARLARI ---
   useEffect(() => {
@@ -551,7 +549,17 @@ export default function App() {
     // Kullanıcıları yükle
     fetchUsers();
   }, []);
+  // --- APP DOMAIN DEĞİŞTİĞİNDE VERİLERİ TAZELEME EFEKTİ ---
 
+  useEffect(() => {
+    // Eğer kullanıcı KÖK SİSTEM paneline geçerse verileri getir
+    if (appDomain === "superadmin") {
+      fetchWorkspaces();
+
+      // Not: Master kategorileri de bu ekranda tazelemek isterseniz
+      // fetchCategories() fonksiyonunu da burada çağırabilirsiniz.
+    }
+  }, [appDomain]);
   // --- VERİTABANINDAN VERİLERİ ÇEKME EFEKTİ ---
   useEffect(() => {
     if (currentUser) {
@@ -1849,7 +1857,7 @@ export default function App() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {workspaces.map((ws) => (
                 <div
-                  key={ws.id}
+                  key={ws._id || ws.id} // SADECE BU SATIRI GÜVENLİ HALE GETİRİN
                   className="bg-slate-900 border border-slate-800 p-5 rounded-2xl hover:border-indigo-500/50 transition-colors group relative overflow-hidden"
                 >
                   <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-bl-[100%] pointer-events-none"></div>
