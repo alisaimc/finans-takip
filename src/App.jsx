@@ -533,6 +533,75 @@ export default function App() {
     }
   };
 
+  // Workspace Modal State'leri
+  const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
+  const [workspaceForm, setWorkspaceForm] = useState({
+    name: "",
+    type: "Finans",
+  });
+
+  // --- WORKSPACE SİLME FONKSİYONU ---
+  const handleDeleteWorkspace = (id) => {
+    showConfirm(
+      "Bu çalışma alanını kalıcı olarak silmek istediğinize emin misiniz?",
+      async () => {
+        try {
+          const token = localStorage.getItem("app_token");
+          const response = await fetch(`/api/workspaces?id=${id}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          if (response.ok) {
+            // Silineni ekrandan kaldır
+            setWorkspaces(
+              workspaces.filter((ws) => String(ws._id || ws.id) !== String(id)),
+            );
+            closeDialog();
+            setTimeout(
+              () => showAlert("Çalışma alanı başarıyla silindi!"),
+              200,
+            );
+          } else {
+            throw new Error("API Hatası");
+          }
+        } catch (error) {
+          closeDialog();
+          setTimeout(() => showAlert("Silme işlemi başarısız oldu."), 200);
+        }
+      },
+    );
+  };
+
+  // --- YENİ WORKSPACE EKLEME FONKSİYONU ---
+  const handleWorkspaceSubmit = async (e) => {
+    e.preventDefault();
+    if (!workspaceForm.name.trim()) return showAlert("Lütfen bir isim girin.");
+
+    try {
+      const token = localStorage.getItem("app_token");
+      const response = await fetch("/api/workspaces", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(workspaceForm),
+      });
+
+      if (response.ok) {
+        const newWs = await response.json();
+        setWorkspaces([newWs, ...workspaces]); // Yeni ekleneni listenin başına koy
+        setIsWorkspaceModalOpen(false); // Modalı kapat
+        setWorkspaceForm({ name: "", type: "Finans" }); // Formu temizle
+        showAlert("Yeni Workspace başarıyla oluşturuldu!");
+      } else {
+        throw new Error("API Hatası");
+      }
+    } catch (error) {
+      showAlert("Workspace oluşturulurken hata meydana geldi.");
+    }
+  };
   // --- İLK YÜKLEME VE SİSTEM AYARLARI ---
   useEffect(() => {
     const savedBg = localStorage.getItem("app_system_bg_color");
@@ -1857,7 +1926,7 @@ export default function App() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {workspaces.map((ws) => (
                 <div
-                  key={ws._id || ws.id} // SADECE BU SATIRI GÜVENLİ HALE GETİRİN
+                  key={ws._id || ws.id}
                   className="bg-slate-900 border border-slate-800 p-5 rounded-2xl hover:border-indigo-500/50 transition-colors group relative overflow-hidden"
                 >
                   <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-bl-[100%] pointer-events-none"></div>
@@ -1867,7 +1936,7 @@ export default function App() {
                       <Database size={20} />
                     </div>
                     <span className="text-[10px] font-black uppercase tracking-wider bg-green-500/10 text-green-400 px-2.5 py-1 rounded-full border border-green-500/20">
-                      {ws.status}
+                      {ws.status || "Aktif"}
                     </span>
                   </div>
 
@@ -1880,13 +1949,18 @@ export default function App() {
 
                   <div className="flex items-center justify-between pt-4 border-t border-slate-800 relative z-10">
                     <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
-                      <Users size={14} /> {ws.userCount} Aktif Kullanıcı
+                      {/* AKTİF KULLANICI SAYISI DÜZELTİLDİ */}
+                      <Users size={14} /> {ws.userCount || 0} Aktif Kullanıcı
                     </span>
                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button className="p-1.5 text-slate-400 hover:text-white bg-slate-800 rounded-md">
                         <Settings size={14} />
                       </button>
-                      <button className="p-1.5 text-slate-400 hover:text-red-400 bg-slate-800 rounded-md">
+                      {/* SİLME BUTONU API'YE BAĞLANDI */}
+                      <button
+                        onClick={() => handleDeleteWorkspace(ws._id || ws.id)}
+                        className="p-1.5 text-slate-400 hover:text-red-400 bg-slate-800 rounded-md"
+                      >
                         <Trash2 size={14} />
                       </button>
                     </div>
@@ -1945,7 +2019,10 @@ export default function App() {
                           <span className="text-xs font-bold text-slate-300">
                             {c.name}
                           </span>
-                          <button className="text-slate-600 hover:text-red-400">
+                          <button
+                            onClick={() => handleDeleteCategory(c._id || c.id)}
+                            className="text-slate-600 hover:text-red-400"
+                          >
                             <X size={14} />
                           </button>
                         </div>
@@ -1967,7 +2044,10 @@ export default function App() {
                           <span className="text-xs font-bold text-slate-300">
                             {c.name}
                           </span>
-                          <button className="text-slate-600 hover:text-red-400">
+                          <button
+                            onClick={() => handleDeleteCategory(c._id || c.id)}
+                            className="text-slate-600 hover:text-red-400"
+                          >
                             <X size={14} />
                           </button>
                         </div>
@@ -1978,6 +2058,83 @@ export default function App() {
             </div>
           </div>
         </main>
+        {/* YENİ WORKSPACE EKLEME MODALI */}
+        {isWorkspaceModalOpen && (
+          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform scale-100 animate-[slide-up-fade_0.3s_ease-out]">
+              <div className="flex justify-between items-center p-5 border-b border-slate-800">
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Plus size={20} className="text-indigo-500" /> Yeni Workspace
+                  Oluştur
+                </h2>
+                <button
+                  onClick={() => setIsWorkspaceModalOpen(false)}
+                  className="text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 p-2 rounded-lg transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <form onSubmit={handleWorkspaceSubmit} className="p-6 space-y-5">
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">
+                    Workspace Adı
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={workspaceForm.name}
+                    onChange={(e) =>
+                      setWorkspaceForm({
+                        ...workspaceForm,
+                        name: e.target.value,
+                      })
+                    }
+                    className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-indigo-500 transition-colors"
+                    placeholder="Örn: Pazarlama Departmanı"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">
+                    Kategori / Tür
+                  </label>
+                  <select
+                    value={workspaceForm.type}
+                    onChange={(e) =>
+                      setWorkspaceForm({
+                        ...workspaceForm,
+                        type: e.target.value,
+                      })
+                    }
+                    className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-indigo-500 transition-colors"
+                  >
+                    <option value="Finans">Finans</option>
+                    <option value="Proje">Proje Yönetimi</option>
+                    <option value="İnsan Kaynakları">İnsan Kaynakları</option>
+                    <option value="Genel">Genel</option>
+                  </select>
+                </div>
+
+                <div className="pt-4 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsWorkspaceModalOpen(false)}
+                    className="flex-1 px-4 py-3 rounded-xl border border-slate-700 text-slate-300 font-bold hover:bg-slate-800 transition-colors"
+                  >
+                    İptal
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 py-3 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-900/50"
+                  >
+                    Oluştur
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
