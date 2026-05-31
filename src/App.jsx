@@ -1222,8 +1222,10 @@ export default function App() {
     try {
       const compressedBase64 = await compressImage(file);
 
-      const targetUser = appUsers.find((u) => u.id === currentUser.id);
-      const updatedUser = { ...targetUser, profilePhoto: compressedBase64 };
+      const updatedUser = {
+        id: currentUser.id,
+        profilePhoto: compressedBase64,
+      };
 
       const response = await fetch("/api/users", {
         method: "POST",
@@ -1293,8 +1295,10 @@ export default function App() {
 
     try {
       const compressedBase64 = await compressBackgroundImage(file);
-      const targetUser = appUsers.find((u) => u.id === currentUser.id);
-      const updatedUser = { ...targetUser, backgroundImage: compressedBase64 };
+      const updatedUser = {
+        id: currentUser.id,
+        backgroundImage: compressedBase64,
+      };
 
       const response = await fetch("/api/users", {
         method: "POST",
@@ -3352,11 +3356,8 @@ export default function App() {
                   <button
                     type="button"
                     onClick={async () => {
-                      const targetUser = appUsers.find(
-                        (u) => u.id === currentUser.id,
-                      );
                       const updatedUser = {
-                        ...targetUser,
+                        id: currentUser.id,
                         backgroundImage: null,
                       };
                       await fetch("/api/users", {
