@@ -1918,7 +1918,10 @@ export default function App() {
                   Sistemde oluşturulan tüm izole çalışma birimleri.
                 </p>
               </div>
-              <button className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-indigo-500 transition-colors">
+              <button
+                onClick={() => setIsWorkspaceModalOpen(true)}
+                className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-indigo-500 transition-colors"
+              >
                 <Plus size={16} /> Yeni Workspace
               </button>
             </div>
