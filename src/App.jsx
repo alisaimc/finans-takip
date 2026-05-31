@@ -1928,11 +1928,6 @@ export default function App() {
                     placeholder="Workspace Adı (Örn: Ailem)"
                   />
                 </div>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
-                    <Database size={20} />
-                  </div>
-                </div>
                 <button
                   type="submit"
                   className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white py-3.5 rounded-xl font-black shadow-lg shadow-violet-600/30 hover:shadow-violet-600/50 transition-colors mt-6"
