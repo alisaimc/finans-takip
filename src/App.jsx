@@ -1791,11 +1791,6 @@ export default function App() {
                       placeholder="Alan Adı (Örn: Merkez Bütçe)"
                     />
                   </div>
-                  <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
-                      <Database size={22} />
-                    </div>
-                  </div>
                   <button
                     type="submit"
                     className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white py-4 rounded-2xl font-black mt-6 shadow-lg"
