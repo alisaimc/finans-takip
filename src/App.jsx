@@ -540,38 +540,49 @@ export default function App() {
   const [workspaceForm, setWorkspaceForm] = useState({
     name: "",
   });
+  const [workspaceToDelete, setWorkspaceToDelete] = useState(null); // Silinecek workspace bilgilerini tutar
+  const [deleteConfirmText, setDeleteConfirmText] = useState(""); // Kullanıcının inputa yazdığı metin
 
   // --- WORKSPACE SİLME FONKSİYONU ---
-  const handleDeleteWorkspace = (id) => {
-    showConfirm(
-      "Bu çalışma alanını kalıcı olarak silmek istediğinize emin misiniz?",
-      async () => {
-        try {
-          const token = localStorage.getItem("app_token");
-          const response = await fetch(`/api/workspaces?id=${id}`, {
-            method: "DELETE",
-            headers: { Authorization: `Bearer ${token}` },
-          });
+  const executeDeleteWorkspace = async (e) => {
+    e.preventDefault();
 
-          if (response.ok) {
-            // Silineni ekrandan kaldır
-            setWorkspaces(
-              workspaces.filter((ws) => String(ws._id || ws.id) !== String(id)),
-            );
-            closeDialog();
-            setTimeout(
-              () => showAlert("Çalışma alanı başarıyla silindi!"),
-              200,
-            );
-          } else {
-            throw new Error("API Hatası");
-          }
-        } catch (error) {
-          closeDialog();
-          setTimeout(() => showAlert("Silme işlemi başarısız oldu."), 200);
-        }
-      },
-    );
+    // Güvenlik Kontrolü: Yazılan isim eşleşmiyor ise durdur
+    if (deleteConfirmText !== workspaceToDelete.name) {
+      return showAlert(
+        "Girdiğiniz isim eşleşmiyor. Lütfen çalışma alanı adını tam olarak yazın.",
+      );
+    }
+
+    try {
+      const token = localStorage.getItem("app_token");
+      const id = workspaceToDelete._id || workspaceToDelete.id;
+
+      const response = await fetch(`/api/workspaces?id=${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        // Ekranda listeyi güncelle
+        setWorkspaces(
+          workspaces.filter((ws) => String(ws._id || ws.id) !== String(id)),
+        );
+        setWorkspaceToDelete(null);
+        setDeleteConfirmText(""); // Formu temizle
+        setTimeout(
+          () =>
+            showAlert(
+              "Çalışma alanı ve içindeki TÜM VERİLER başarıyla silindi!",
+            ),
+          200,
+        );
+      } else {
+        throw new Error("API Hatası");
+      }
+    } catch (error) {
+      showAlert("Silme işlemi başarısız oldu.");
+    }
   };
 
   // --- YENİ WORKSPACE EKLEME FONKSİYONU ---
@@ -2104,7 +2115,7 @@ export default function App() {
                       </button>
                       {/* SİLME BUTONU API'YE BAĞLANDI */}
                       <button
-                        onClick={() => handleDeleteWorkspace(ws._id || ws.id)}
+                        onClick={() => setWorkspaceToDelete(ws)} // Tıklandığında o workspace'i state'e atar ve modalı açar
                         className="p-1.5 text-slate-400 hover:text-red-400 bg-slate-800 rounded-md"
                       >
                         <Trash2 size={14} />
@@ -2115,6 +2126,76 @@ export default function App() {
               ))}
             </div>
           </div>
+          {/* WORKSPACE SİLME ONAY MODALI (GÜVENLİK ADIMLI) */}
+          {workspaceToDelete && (
+            <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+              <div className="bg-slate-900 border border-red-900/50 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform scale-100 animate-[slide-up-fade_0.3s_ease-out]">
+                <div className="p-6 text-center border-b border-slate-800">
+                  <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Trash2 size={32} />
+                  </div>
+                  <h2 className="text-xl font-black text-white mb-2">
+                    Kalıcı Silme İşlemi
+                  </h2>
+                  <p className="text-sm text-slate-400">
+                    <strong className="text-white">
+                      {workspaceToDelete.name}
+                    </strong>{" "}
+                    adlı çalışma alanını siliyorsunuz. Bu işlem içindeki{" "}
+                    <strong className="text-red-400">
+                      tüm kullanıcıları, kategorileri ve finansal işlemleri
+                    </strong>{" "}
+                    kalıcı olarak yok edecektir. Geri alınamaz!
+                  </p>
+                </div>
+
+                <form
+                  onSubmit={executeDeleteWorkspace}
+                  className="p-6 bg-slate-900/50"
+                >
+                  <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">
+                    Onaylamak için{" "}
+                    <span className="text-white select-all">
+                      {workspaceToDelete.name}
+                    </span>{" "}
+                    yazın
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={deleteConfirmText}
+                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-red-500 transition-colors mb-6 text-center font-bold"
+                    placeholder={workspaceToDelete.name}
+                    autoComplete="off"
+                  />
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setWorkspaceToDelete(null);
+                        setDeleteConfirmText("");
+                      }}
+                      className="flex-1 px-4 py-3 rounded-xl border border-slate-700 text-slate-300 font-bold hover:bg-slate-800 transition-colors"
+                    >
+                      İptal Et
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={deleteConfirmText !== workspaceToDelete.name}
+                      className={`flex-1 px-4 py-3 rounded-xl font-bold transition-all ${
+                        deleteConfirmText === workspaceToDelete.name
+                          ? "bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-900/50 cursor-pointer"
+                          : "bg-slate-800 text-slate-500 cursor-not-allowed"
+                      }`}
+                    >
+                      Kalıcı Olarak Sil
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
 
           {/* SAĞ PANEL: GLOBAL KATEGORİ HAVUZU */}
           <div className="space-y-6">

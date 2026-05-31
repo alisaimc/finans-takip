@@ -1,8 +1,7 @@
 // api/workspaces.js
 
 import connectDB from "./db.js"; // veya db.js'yi nasıl import ediyorsanız (require("./db.js"))
-import { Workspace } from "./models.js"; // Export yönteminize göre import edin
-
+import { Workspace, User, Transaction, Category } from "./models.js";
 export default async function handler(req, res) {
   // Önce veritabanına bağlan
   await connectDB();
@@ -38,15 +37,23 @@ export default async function handler(req, res) {
 
   // --- DELETE: ÇALIŞMA ALANI SİL ---
   if (req.method === "DELETE") {
-    try {
-      const { id } = req.query;
-      if (!id) return res.status(400).json({ error: "ID belirtilmedi." });
+  try {
+    const { id } = req.query;
+    if (!id) return res.status(400).json({ error: "ID belirtilmedi." });
 
-      await Workspace.findByIdAndDelete(id);
-      return res.status(200).json({ message: "Başarıyla silindi." });
-    } catch (error) {
-      return res.status(500).json({ error: "Silinemedi." });
-    }
+    // 1. Önce bu Workspace ID'sine bağlı olan TÜM alt verileri sil
+    // (Modellerinizdeki workspace referans isminin "workspaceId" olduğunu varsayıyoruz)
+    await User.deleteMany({ workspaceId: id });
+    await Transaction.deleteMany({ workspaceId: id });
+    await Category.deleteMany({ workspaceId: id });
+
+    // 2. En son Workspace'in kendisini sil
+    await Workspace.findByIdAndDelete(id);
+
+    return res.status(200).json({ message: "Workspace ve bağlı tüm veriler başarıyla silindi." });
+  } catch (error) {
+    return res.status(500).json({ error: "Silme işlemi sırasında hata oluştu." });
+  }
   }
 
   // Desteklenmeyen bir metod gelirse:
