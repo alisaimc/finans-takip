@@ -38,7 +38,7 @@ const Transaction = mongoose.models.Transaction || mongoose.model('Transaction',
 
 const workspaceSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  type: { type: String, required: true },
+  // type: { type: String, required: true },  <-- BU SATIRI SİLİN
   status: { type: String, default: "Aktif" },
   userCount: { type: Number, default: 0 }
 }, { timestamps: true });

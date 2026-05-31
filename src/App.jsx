@@ -539,7 +539,6 @@ export default function App() {
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
   const [workspaceForm, setWorkspaceForm] = useState({
     name: "",
-    type: "Finans",
   });
 
   // --- WORKSPACE SİLME FONKSİYONU ---
@@ -1059,8 +1058,7 @@ export default function App() {
   // 2. AŞAMA: Otomatik login ol, Token'ı al ve Workspace oluşturarak sisteme gir
   const handleInitialWorkspaceSubmit = async (e) => {
     e.preventDefault();
-    const wsName = e.target.ws_name.value.trim();
-    const wsType = e.target.ws_type.value;
+    const wsName = e.target.ws_name.value.trim(); // wsType okuması SİLİNDİ
 
     if (!wsName) return showAlert("Lütfen çalışma alanı adını girin.");
 
@@ -1072,7 +1070,6 @@ export default function App() {
         body: JSON.stringify(tempCreds),
       });
 
-      // JSON okumayı güvenli hale getirdik
       let loginData = {};
       const contentType = loginRes.headers.get("content-type");
       if (contentType && contentType.includes("application/json")) {
@@ -1085,18 +1082,18 @@ export default function App() {
       const token = loginData.token;
       const sessionUser = loginData.user;
 
-      // 2. Workspace oluştur
+      // 2. Workspace oluştur (SADECE NAME GİDİYOR)
       const wsRes = await fetch("/api/workspaces", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ name: wsName, type: wsType }),
+        body: JSON.stringify({ name: wsName }), // type SİLİNDİ
       });
 
       if (wsRes.ok) {
-        // 3. Başarılıysa RAM'i temizle ve uygulamaya sok
+        // ... (Geri kalan RAM temizleme ve giriş işlemleri aynı)
         setTransactions([]);
         setCategories([]);
         setAppUsers([]);
@@ -1798,14 +1795,6 @@ export default function App() {
                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
                       <Database size={22} />
                     </div>
-                    <select
-                      name="ws_type"
-                      className="w-full pl-12 pr-4 py-4 rounded-2xl border-0 ring-1 ring-slate-200 !bg-slate-50 focus:!bg-white focus:ring-2 focus:ring-violet-600 outline-none font-bold text-slate-800"
-                    >
-                      <option value="Finans">Bireysel Finans</option>
-                      <option value="Şirket">Şirket / Kurumsal</option>
-                      <option value="Proje">Proje Yönetimi</option>
-                    </select>
                   </div>
                   <button
                     type="submit"
@@ -1956,14 +1945,6 @@ export default function App() {
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
                     <Database size={20} />
                   </div>
-                  <select
-                    name="ws_type"
-                    className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-slate-50 focus:bg-white border-0 ring-1 ring-slate-200 focus:ring-2 focus:ring-violet-600 outline-none transition-all font-bold text-slate-800"
-                  >
-                    <option value="Finans">Bireysel Finans</option>
-                    <option value="Şirket">Şirket / Kurumsal</option>
-                    <option value="Proje">Proje Yönetimi</option>
-                  </select>
                 </div>
                 <button
                   type="submit"
@@ -2116,9 +2097,6 @@ export default function App() {
                   <h3 className="text-lg font-bold text-white mb-1 relative z-10">
                     {ws.name}
                   </h3>
-                  <p className="text-xs font-bold text-slate-500 mb-4 relative z-10">
-                    {ws.type}
-                  </p>
 
                   <div className="flex items-center justify-between pt-4 border-t border-slate-800 relative z-10">
                     <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
@@ -2266,27 +2244,6 @@ export default function App() {
                     className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-indigo-500 transition-colors"
                     placeholder="Örn: Pazarlama Departmanı"
                   />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">
-                    Kategori / Tür
-                  </label>
-                  <select
-                    value={workspaceForm.type}
-                    onChange={(e) =>
-                      setWorkspaceForm({
-                        ...workspaceForm,
-                        type: e.target.value,
-                      })
-                    }
-                    className="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-indigo-500 transition-colors"
-                  >
-                    <option value="Finans">Finans</option>
-                    <option value="Proje">Proje Yönetimi</option>
-                    <option value="İnsan Kaynakları">İnsan Kaynakları</option>
-                    <option value="Genel">Genel</option>
-                  </select>
                 </div>
 
                 <div className="pt-4 flex gap-3">

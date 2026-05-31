@@ -21,9 +21,7 @@ export default async function handler(req, res) {
   if (req.method === "POST") {
     try {
       const { name, type } = req.body;
-      if (!name || !type) {
-        return res.status(400).json({ error: "Eksik bilgi." });
-      }
+      
 
       const newWorkspace = await Workspace.create({
         name,
