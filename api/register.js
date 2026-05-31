@@ -8,9 +8,8 @@ export default async function handler(req, res) {
 
   try {
     await dbConnect();
-    const { username, password } = req.body;
-
-    if (!username || !password) {
+    const { username, password, workspaceName } = req.body;
+  if (!username || !password) {
       return res.status(400).json({ error: 'Kullanıcı adı ve şifre zorunludur.' });
     }
 
@@ -19,8 +18,9 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Bu kullanıcı adı zaten kullanılıyor.' });
     }
 
+    // YENİ EKLENEN: Eğer kullanıcı isim girdiyse onu kullan, girmediyse eskisini yap
     const newWorkspace = await Workspace.create({ 
-      name: `${username.toUpperCase()} Finans Alanı` 
+      name: workspaceName || `${username.toUpperCase()} Finans Alanı` 
     });
 
     const salt = await bcrypt.genSalt(10);

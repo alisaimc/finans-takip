@@ -1031,50 +1031,47 @@ export default function App() {
   // --- AUTH VE KULLANICI ---
   // --- GÜVENLİ GİRİŞ YAP (LOGIN) ---
   // 1. AŞAMA: Kullanıcı hesabını oluştur
-  const handleRegisterSubmit = async (e) => {
+  // 1. AŞAMA: Sadece bilgileri RAM'de tut, henüz veritabanına YAZMA!
+  const handleRegisterSubmit = (e) => {
     e.preventDefault();
     const username = e.target.reg_username.value.trim().toLowerCase();
     const password = e.target.reg_password.value;
 
-    try {
-      const response = await fetch("/api/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
-
-      // HATA BURADAN KAYNAKLANIYORDU: Yanıtın gerçekten JSON olup olmadığını kontrol ediyoruz.
-      let data = {};
-      const contentType = response.headers.get("content-type");
-      if (contentType && contentType.includes("application/json")) {
-        data = await response.json();
-      }
-
-      if (response.ok) {
-        // BAŞARILI: 2. Aşama (Workspace) ekranına geç
-        setTempCreds({ username, password });
-        setRegisterStep(2);
-        showAlert(
-          "Kullanıcı başarıyla oluşturuldu! Şimdi ilk çalışma alanınızı (workspace) belirleyin.",
-        );
-      } else {
-        showAlert(data.error || "Kayıt başarısız!");
-      }
-    } catch (error) {
-      console.error("Kayıt Hatası:", error);
-      showAlert("Sunucu ile iletişimde bir sorun oluştu.");
-    }
+    setTempCreds({ username, password });
+    setRegisterStep(2);
   };
 
-  // 2. AŞAMA: Otomatik login ol, Token'ı al ve Workspace oluşturarak sisteme gir
+  // 2. AŞAMA: Hem Kayıt Ol, Hem Alanı Kur, Hem de Giriş Yap
   const handleInitialWorkspaceSubmit = async (e) => {
     e.preventDefault();
-    const wsName = e.target.ws_name.value.trim(); // wsType okuması SİLİNDİ
+    const wsName = e.target.ws_name.value.trim();
 
     if (!wsName) return showAlert("Lütfen çalışma alanı adını girin.");
 
     try {
-      // 1. Login ol ve yetki al
+      // 1. VERİTABANINA KAYIT İŞLEMİ (Kullanıcı Adı + Şifre + Workspace Adı birlikte gönderiliyor)
+      const regRes = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: tempCreds.username,
+          password: tempCreds.password,
+          workspaceName: wsName,
+        }),
+      });
+
+      let regData = {};
+      const regContentType = regRes.headers.get("content-type");
+      if (regContentType && regContentType.includes("application/json")) {
+        regData = await regRes.json();
+      }
+
+      if (!regRes.ok) {
+        setRegisterStep(1); // Kullanıcı adı vs. alınmışsa hata ver ve 1. adıma geri yolla
+        return showAlert(regData.error || "Kayıt başarısız!");
+      }
+
+      // 2. KAYIT BAŞARILIYSA OTOMATİK GİRİŞ YAP
       const loginRes = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1082,8 +1079,8 @@ export default function App() {
       });
 
       let loginData = {};
-      const contentType = loginRes.headers.get("content-type");
-      if (contentType && contentType.includes("application/json")) {
+      const loginContentType = loginRes.headers.get("content-type");
+      if (loginContentType && loginContentType.includes("application/json")) {
         loginData = await loginRes.json();
       }
 
@@ -1093,34 +1090,18 @@ export default function App() {
       const token = loginData.token;
       const sessionUser = loginData.user;
 
-      // 2. Workspace oluştur (SADECE NAME GİDİYOR)
-      const wsRes = await fetch("/api/workspaces", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ name: wsName }), // type SİLİNDİ
-      });
+      // 3. SİSTEME GİRİŞ YAP VE RAM'İ TEMİZLE
+      setTransactions([]);
+      setCategories([]);
+      setAppUsers([]);
 
-      if (wsRes.ok) {
-        // ... (Geri kalan RAM temizleme ve giriş işlemleri aynı)
-        setTransactions([]);
-        setCategories([]);
-        setAppUsers([]);
+      localStorage.setItem("app_currentUser_v2", JSON.stringify(sessionUser));
+      localStorage.setItem("app_token", token);
+      setCurrentUser(sessionUser);
+      fetchUsers();
 
-        localStorage.setItem("app_currentUser_v2", JSON.stringify(sessionUser));
-        localStorage.setItem("app_token", token);
-        setCurrentUser(sessionUser);
-        fetchUsers();
-
-        setRegisterStep(1);
-        showAlert(
-          `Harika! '${wsName}' çalışma alanı kuruldu ve giriş yapıldı.`,
-        );
-      } else {
-        throw new Error("Workspace API Hatası. Sunucu yanıt veremedi.");
-      }
+      setRegisterStep(1);
+      showAlert(`Harika! '${wsName}' çalışma alanı kuruldu ve giriş yapıldı.`);
     } catch (error) {
       showAlert("Kurulum sırasında hata oluştu: " + error.message);
     }
