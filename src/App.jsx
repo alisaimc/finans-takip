@@ -1020,7 +1020,6 @@ export default function App() {
 
   // --- AUTH VE KULLANICI ---
   // --- GÜVENLİ GİRİŞ YAP (LOGIN) ---
-
   // 1. AŞAMA: Kullanıcı hesabını oluştur
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
@@ -1034,10 +1033,16 @@ export default function App() {
         body: JSON.stringify({ username, password }),
       });
 
-      const data = await response.json();
+      // HATA BURADAN KAYNAKLANIYORDU: Yanıtın gerçekten JSON olup olmadığını kontrol ediyoruz.
+      let data = {};
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        data = await response.json();
+      }
+
       if (response.ok) {
-        // BAŞARILI: Giriş ekranına atmak yerine 2. Aşama (Workspace) ekranına geç!
-        setTempCreds({ username, password }); // Otomatik giriş için bilgileri tut
+        // BAŞARILI: 2. Aşama (Workspace) ekranına geç
+        setTempCreds({ username, password });
         setRegisterStep(2);
         showAlert(
           "Kullanıcı başarıyla oluşturuldu! Şimdi ilk çalışma alanınızı (workspace) belirleyin.",
@@ -1046,7 +1051,8 @@ export default function App() {
         showAlert(data.error || "Kayıt başarısız!");
       }
     } catch (error) {
-      showAlert("Sunucuya bağlanılamadı.");
+      console.error("Kayıt Hatası:", error);
+      showAlert("Sunucu ile iletişimde bir sorun oluştu.");
     }
   };
 
@@ -1059,20 +1065,27 @@ export default function App() {
     if (!wsName) return showAlert("Lütfen çalışma alanı adını girin.");
 
     try {
-      // 1. Önce arka planda oluşturduğumuz bilgilerle Login olup Yetki(Token) alalım
+      // 1. Login ol ve yetki al
       const loginRes = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(tempCreds),
       });
 
-      const loginData = await loginRes.json();
-      if (!loginRes.ok) throw new Error("Giriş yapılamadı.");
+      // JSON okumayı güvenli hale getirdik
+      let loginData = {};
+      const contentType = loginRes.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        loginData = await loginRes.json();
+      }
+
+      if (!loginRes.ok)
+        throw new Error(loginData.error || "Otomatik giriş yapılamadı.");
 
       const token = loginData.token;
       const sessionUser = loginData.user;
 
-      // 2. Aldığımız token ile Workspace tablosuna yeni alanı yazalım
+      // 2. Workspace oluştur
       const wsRes = await fetch("/api/workspaces", {
         method: "POST",
         headers: {
@@ -1083,7 +1096,7 @@ export default function App() {
       });
 
       if (wsRes.ok) {
-        // 3. Her şey sorunsuzsa RAM'i temizleyip uygulamaya giriş yaptıralım
+        // 3. Başarılıysa RAM'i temizle ve uygulamaya sok
         setTransactions([]);
         setCategories([]);
         setAppUsers([]);
@@ -1091,15 +1104,14 @@ export default function App() {
         localStorage.setItem("app_currentUser_v2", JSON.stringify(sessionUser));
         localStorage.setItem("app_token", token);
         setCurrentUser(sessionUser);
-        fetchUsers(); // Kullanıcı listesini tazele
+        fetchUsers();
 
-        // Formu sıfırla
         setRegisterStep(1);
         showAlert(
           `Harika! '${wsName}' çalışma alanı kuruldu ve giriş yapıldı.`,
         );
       } else {
-        throw new Error("Workspace API Hatası");
+        throw new Error("Workspace API Hatası. Sunucu yanıt veremedi.");
       }
     } catch (error) {
       showAlert("Kurulum sırasında hata oluştu: " + error.message);
