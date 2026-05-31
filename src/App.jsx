@@ -1221,15 +1221,20 @@ export default function App() {
 
     try {
       const compressedBase64 = await compressImage(file);
-
       const updatedUser = {
         id: currentUser.id,
         profilePhoto: compressedBase64,
       };
 
+      // YENİ EKLENDİ: Güvenlik Biletini Al
+      const token = localStorage.getItem("app_token");
+
       const response = await fetch("/api/users", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // YENİ EKLENDİ: Bileti Göster
+        },
         body: JSON.stringify(updatedUser),
       });
 
@@ -1300,9 +1305,15 @@ export default function App() {
         backgroundImage: compressedBase64,
       };
 
+      // YENİ EKLENDİ: Güvenlik Biletini Al
+      const token = localStorage.getItem("app_token");
+
       const response = await fetch("/api/users", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // YENİ EKLENDİ: Bileti Göster
+        },
         body: JSON.stringify(updatedUser),
       });
 
@@ -1331,9 +1342,14 @@ export default function App() {
     const updatedUser = { ...targetUser, password: profileForm.newPass };
 
     try {
+      const token = localStorage.getItem("app_token"); // GÜVENLİK BİLETİ EKLENDİ
+
       const response = await fetch("/api/users", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // BİLET GÖNDERİLDİ
+        },
         body: JSON.stringify(updatedUser),
       });
 
@@ -1483,15 +1499,18 @@ export default function App() {
       if (targetUser) {
         const updatedUser = { ...targetUser, systemCity: cityObj };
         try {
+          const token = localStorage.getItem("app_token"); // GÜVENLİK BİLETİ EKLENDİ
           await fetch("/api/users", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`, // BİLET GÖNDERİLDİ
+            },
             body: JSON.stringify(updatedUser),
           });
           fetchUsers();
         } catch (err) {}
       }
-      // Alert kaldırıldı
     }
   };
 
@@ -1511,9 +1530,13 @@ export default function App() {
       localStorage.setItem("app_users_v2", JSON.stringify(updatedUsersList));
 
       try {
+        const token = localStorage.getItem("app_token"); // GÜVENLİK BİLETİ EKLENDİ
         const response = await fetch("/api/users", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`, // BİLET GÖNDERİLDİ
+          },
           body: JSON.stringify(updatedUser),
         });
         if (response.ok) fetchUsers();
@@ -1521,7 +1544,6 @@ export default function App() {
         console.warn("API yok, hava durumu efekti yerel belleğe kaydedildi.");
       }
     }
-    // Alert kaldırıldı
   };
 
   const handleThemeChange = async (e) => {
@@ -1540,9 +1562,13 @@ export default function App() {
       localStorage.setItem("app_users_v2", JSON.stringify(updatedUsersList));
 
       try {
+        const token = localStorage.getItem("app_token"); // GÜVENLİK BİLETİ EKLENDİ
         const response = await fetch("/api/users", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`, // BİLET GÖNDERİLDİ
+          },
           body: JSON.stringify(updatedUser),
         });
         if (response.ok) fetchUsers();
@@ -1550,7 +1576,6 @@ export default function App() {
         console.warn("API yok, sistem teması yerel belleğe kaydedildi.");
       }
     }
-    // Alert kaldırıldı
   };
 
   // --- HELPERS ---
@@ -3360,11 +3385,18 @@ export default function App() {
                         id: currentUser.id,
                         backgroundImage: null,
                       };
+
+                      const token = localStorage.getItem("app_token"); // YENİ EKLENDİ
+
                       await fetch("/api/users", {
                         method: "POST",
-                        headers: { "Content-Type": "application/json" },
+                        headers: {
+                          "Content-Type": "application/json",
+                          Authorization: `Bearer ${token}`, // YENİ EKLENDİ
+                        },
                         body: JSON.stringify(updatedUser),
                       });
+
                       await fetchUsers();
                       const newSession = {
                         ...currentUser,
