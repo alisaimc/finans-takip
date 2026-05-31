@@ -7,14 +7,36 @@ export default async function handler(req, res) {
   await connectDB();
 
   // --- GET: TÜM ÇALIŞMA ALANLARINI GETİR ---
-  if (req.method === "GET") {
-    try {
-      const workspaces = await Workspace.find().sort({ createdAt: -1 });
-      return res.status(200).json(workspaces);
-    } catch (error) {
-      return res.status(500).json({ error: "Veriler getirilemedi." });
-    }
+// --- GET: TÜM ÇALIŞMA ALANLARINI GETİR (GÜNCELLENDİ) ---
+if (req.method === "GET") {
+  try {
+    // .lean() metodu Mongoose objelerini saf JSON objesine çevirir, işlem yapmayı hızlandırır
+    const workspaces = await Workspace.find().sort({ createdAt: -1 }).lean();
+
+    // Her bir çalışma alanı için veritabanına bağlanıp, ona ait kullanıcıları sayıyoruz
+    const workspacesWithUserCount = await Promise.all(
+      workspaces.map(async (ws) => {
+        // workspaceId'nin String veya ObjectId kaydedilme ihtimaline karşı çift taraflı güvenli arama
+        const count = await User.countDocuments({
+          $or: [
+            { workspaceId: ws._id },
+            { workspaceId: ws._id.toString() }
+          ]
+        });
+
+        return {
+          ...ws,
+          userCount: count, // Canlı sayılan değeri karta ekle
+        };
+      })
+    );
+
+    return res.status(200).json(workspacesWithUserCount);
+  } catch (error) {
+    console.error("Workspace getirme hatası:", error);
+    return res.status(500).json({ error: "Veriler getirilemedi." });
   }
+}
 
   // --- POST: YENİ ÇALIŞMA ALANI EKLE ---
   if (req.method === "POST") {
