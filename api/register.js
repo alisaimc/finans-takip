@@ -1,5 +1,6 @@
 import dbConnect from './db.js';
-import { User, Workspace } from './models.js';
+import { User, Category } from "./models.js";
+
 import bcrypt from 'bcryptjs';
 
 export default async function handler(req, res) {
