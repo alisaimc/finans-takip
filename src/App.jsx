@@ -23,6 +23,9 @@ import {
   EyeOff,
   Download,
   MapPin,
+  Globe,
+  Layers,
+  Database,
 } from "lucide-react";
 import {
   BarChart,
