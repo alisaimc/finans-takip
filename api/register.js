@@ -1,5 +1,5 @@
 import dbConnect from './db.js';
-import { User, Category } from "./models.js";
+import { User, Category,Workspace} from "./models.js";
 
 import bcrypt from 'bcryptjs';
 
