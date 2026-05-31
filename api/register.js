@@ -31,6 +31,17 @@ export default async function handler(req, res) {
       role: 'admin',
       workspaceId: newWorkspace._id
     });
+    const globalCategories = await Category.find({ isGlobal: true });
+
+if (globalCategories.length > 0) {
+  const userCategories = globalCategories.map(cat => ({
+    name: cat.name,
+    type: cat.type,
+    workspaceId: newWorkspace._id, // Yeni oluşturulan workspace'e kopyala
+    isGlobal: false // Kopyalanan artık o kullanıcıya özel
+  }));
+  await Category.insertMany(userCategories);
+}
 
     return res.status(201).json({ message: 'Kayıt başarılı! Artık giriş yapabilirsiniz.' });
 

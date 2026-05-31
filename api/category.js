@@ -16,10 +16,16 @@ export default async function handler(req, res) {
     const userContext = authenticate(req);
 
     // 1. KATEGORİLERİ GETİR
-    if (req.method === 'GET') {
-      const categories = await Category.find({ workspaceId: userContext.workspaceId });
-      return res.status(200).json(categories);
-    }
+if (req.method === 'GET') {
+  // Hem bu workspace'e ait olanları, hem de global (herkese açık) olanları getir
+  const categories = await Category.find({
+    $or: [
+      { workspaceId: userContext.workspaceId },
+      { isGlobal: true }
+    ]
+  });
+  return res.status(200).json(categories);
+}
 
     // 2. KATEGORİ EKLE VEYA GÜNCELLE
     if (req.method === 'POST') {

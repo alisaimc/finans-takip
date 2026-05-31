@@ -17,7 +17,8 @@ const UserSchema = new mongoose.Schema({
 const CategorySchema = new mongoose.Schema({
   name: { type: String, required: true, uppercase: true },
   type: { type: String, enum: ['GELİR', 'GİDER'], required: true },
-  workspaceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Workspace', required: true }
+  workspaceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Workspace', required: false }, // false yaptık çünkü global ise workspaceId boş olabilir
+  isGlobal: { type: Boolean, default: false } // Global mi?
 });
 
 const TransactionSchema = new mongoose.Schema({

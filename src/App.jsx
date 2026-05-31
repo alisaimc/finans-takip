@@ -130,7 +130,6 @@ const WeatherBackground = ({ city, override, systemBgColor, userBgImage }) => {
   };
 
   const weatherIcons = { snow: "❄️", rain: "🌧️", clouds: "☁️", clear: "☀️" };
-
   return (
     <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
       <style>{`
@@ -391,6 +390,26 @@ const InteractiveDateClock = () => {
 };
 
 export default function App() {
+  // App bileşeni içine eklenecek
+  const [appDomain, setAppDomain] = useState("app"); // "app" | "superadmin"
+
+  // Örnek Workspace verisi (İleride DB'den çekilecek)
+  const [workspaces, setWorkspaces] = useState([
+    {
+      id: "1",
+      name: "Merkez Ofis Bütçesi",
+      type: "Finans",
+      userCount: 3,
+      status: "Aktif",
+    },
+    {
+      id: "2",
+      name: "Yazılım Ekibi",
+      type: "Proje",
+      userCount: 5,
+      status: "Aktif",
+    },
+  ]);
   // --- STATE ---
   const [appUsers, setAppUsers] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
@@ -1777,6 +1796,180 @@ export default function App() {
       </div>
     );
   }
+  // --- SUPER ADMIN DOMAIN ARAYÜZÜ ---
+  if (appDomain === "superadmin") {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-indigo-500/30">
+        {/* KÖK YÖNETİM HEADER */}
+        <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-white">
+                <Globe size={18} />
+              </div>
+              <span className="font-black text-lg tracking-wider text-white">
+                KÖK SİSTEM YÖNETİMİ
+              </span>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <span className="text-xs font-bold text-slate-400 bg-slate-800 px-3 py-1 rounded-full">
+                Erişim: Özel Domain
+              </span>
+              <button
+                onClick={() => setAppDomain("app")}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-sm font-bold transition-colors border border-slate-700"
+              >
+                <LogOut size={16} /> Uygulamaya Dön
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <main className="max-w-7xl mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* SOL PANEL: ÇALIŞMA ALANLARI (WORKSPACES) */}
+          <div className="lg:col-span-2 space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-black text-white flex items-center gap-2">
+                  <Layers className="text-indigo-400" /> Aktif Çalışma Alanları
+                </h2>
+                <p className="text-sm text-slate-400 mt-1">
+                  Sistemde oluşturulan tüm izole çalışma birimleri.
+                </p>
+              </div>
+              <button className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-indigo-500 transition-colors">
+                <Plus size={16} /> Yeni Workspace
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {workspaces.map((ws) => (
+                <div
+                  key={ws.id}
+                  className="bg-slate-900 border border-slate-800 p-5 rounded-2xl hover:border-indigo-500/50 transition-colors group relative overflow-hidden"
+                >
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-bl-[100%] pointer-events-none"></div>
+
+                  <div className="flex justify-between items-start mb-4 relative z-10">
+                    <div className="p-2 bg-slate-800 rounded-lg text-indigo-400">
+                      <Database size={20} />
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-wider bg-green-500/10 text-green-400 px-2.5 py-1 rounded-full border border-green-500/20">
+                      {ws.status}
+                    </span>
+                  </div>
+
+                  <h3 className="text-lg font-bold text-white mb-1 relative z-10">
+                    {ws.name}
+                  </h3>
+                  <p className="text-xs font-bold text-slate-500 mb-4 relative z-10">
+                    {ws.type}
+                  </p>
+
+                  <div className="flex items-center justify-between pt-4 border-t border-slate-800 relative z-10">
+                    <span className="text-xs font-bold text-slate-400 flex items-center gap-1.5">
+                      <Users size={14} /> {ws.userCount} Aktif Kullanıcı
+                    </span>
+                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button className="p-1.5 text-slate-400 hover:text-white bg-slate-800 rounded-md">
+                        <Settings size={14} />
+                      </button>
+                      <button className="p-1.5 text-slate-400 hover:text-red-400 bg-slate-800 rounded-md">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* SAĞ PANEL: GLOBAL KATEGORİ HAVUZU */}
+          <div className="space-y-6">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+              <div className="mb-6">
+                <h2 className="text-lg font-black text-white flex items-center gap-2 mb-1">
+                  <ListOrdered className="text-purple-400" /> Master Kategoriler
+                </h2>
+                <p className="text-xs text-slate-400">
+                  Tüm workspacelere yansıyacak kök veriler.
+                </p>
+              </div>
+
+              {/* Ekleme Formu */}
+              <form className="mb-6 space-y-3">
+                <div>
+                  <input
+                    type="text"
+                    placeholder="Kategori Adı"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none"
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <select className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white outline-none">
+                    <option>GİDER</option>
+                    <option>GELİR</option>
+                  </select>
+                  <button className="bg-slate-800 hover:bg-slate-700 text-white px-4 rounded-lg font-bold text-sm transition-colors border border-slate-700">
+                    Ekle
+                  </button>
+                </div>
+              </form>
+
+              {/* Kategori Listesi */}
+              <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                <div>
+                  <h3 className="text-[10px] font-black text-slate-500 mb-2 tracking-widest border-b border-slate-800 pb-1">
+                    GELİR KALEMLERİ
+                  </h3>
+                  <div className="space-y-1.5">
+                    {categories
+                      .filter((c) => c.type === "GELİR")
+                      .map((c) => (
+                        <div
+                          key={c._id || c.id}
+                          className="flex justify-between items-center bg-slate-950 px-3 py-2 rounded-lg border border-slate-800/50"
+                        >
+                          <span className="text-xs font-bold text-slate-300">
+                            {c.name}
+                          </span>
+                          <button className="text-slate-600 hover:text-red-400">
+                            <X size={14} />
+                          </button>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-[10px] font-black text-slate-500 mb-2 tracking-widest border-b border-slate-800 pb-1 mt-4">
+                    GİDER KALEMLERİ
+                  </h3>
+                  <div className="space-y-1.5">
+                    {categories
+                      .filter((c) => c.type === "GİDER")
+                      .map((c) => (
+                        <div
+                          key={c._id || c.id}
+                          className="flex justify-between items-center bg-slate-950 px-3 py-2 rounded-lg border border-slate-800/50"
+                        >
+                          <span className="text-xs font-bold text-slate-300">
+                            {c.name}
+                          </span>
+                          <button className="text-slate-600 hover:text-red-400">
+                            <X size={14} />
+                          </button>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
   return (
     <div className="min-h-screen relative text-slate-800 font-sans pb-20">
       <WeatherBackground
@@ -1860,6 +2053,15 @@ export default function App() {
             >
               <LogOut size={20} />
             </button>
+            {currentUser.username === "admin" && ( // veya kendi kullanıcı adın
+              <button
+                onClick={() => setAppDomain("superadmin")}
+                className="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-black tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-colors shadow-lg"
+                title="Sistem Kök Paneline Geç"
+              >
+                <Globe size={14} /> KÖK YÖNETİM
+              </button>
+            )}
           </div>
         </div>
       </header>
