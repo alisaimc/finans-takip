@@ -434,7 +434,7 @@ export default function App() {
   });
 
   // Auth States
-
+  const [isLoading, setIsLoading] = useState(false);
   const [isLoginView, setIsLoginView] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [registerStep, setRegisterStep] = useState(1);
@@ -1044,12 +1044,17 @@ export default function App() {
   // 2. AŞAMA: Hem Kayıt Ol, Hem Alanı Kur, Hem de Giriş Yap
   const handleInitialWorkspaceSubmit = async (e) => {
     e.preventDefault();
-    const wsName = e.target.ws_name.value.trim();
 
+    // Eğer zaten bir işlem sürüyorsa fonksiyonu durdur
+    if (isLoading) return;
+
+    const wsName = e.target.ws_name.value.trim();
     if (!wsName) return showAlert("Lütfen çalışma alanı adını girin.");
 
+    setIsLoading(true); // İşlem başladı, butonu kilitle
+
     try {
-      // 1. VERİTABANINA KAYIT İŞLEMİ (Kullanıcı Adı + Şifre + Workspace Adı birlikte gönderiliyor)
+      // 1. VERİTABANINA KAYIT İŞLEMİ
       const regRes = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1067,7 +1072,7 @@ export default function App() {
       }
 
       if (!regRes.ok) {
-        setRegisterStep(1); // Kullanıcı adı vs. alınmışsa hata ver ve 1. adıma geri yolla
+        setRegisterStep(1);
         return showAlert(regData.error || "Kayıt başarısız!");
       }
 
@@ -1104,6 +1109,8 @@ export default function App() {
       showAlert(`Harika! '${wsName}' çalışma alanı kuruldu ve giriş yapıldı.`);
     } catch (error) {
       showAlert("Kurulum sırasında hata oluştu: " + error.message);
+    } finally {
+      setIsLoading(false); // İşlem bitti (başarılı veya hatalı), kilidi aç
     }
   };
 
