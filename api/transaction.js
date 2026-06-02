@@ -28,21 +28,32 @@ export default async function handler(req, res) {
     }
 
     // 2. EKLEME VEYA GÜNCELLEME (POST)
+    // 2. EKLEME VEYA GÜNCELLEME (POST)
     if (req.method === 'POST') {
-      // Frontend'den gelen id veya _id'yi yakala
+      // TOPLU EKLEME (BULK INSERT) KONTROLÜ
+      if (Array.isArray(req.body)) {
+        const bulkData = req.body.map(item => ({
+          ...item,
+          workspaceId: userContext.workspaceId,
+          createdBy: userContext.userId
+        }));
+        
+        const newTransactions = await Transaction.insertMany(bulkData);
+        return res.status(201).json(newTransactions);
+      }
+
+      // TEKİL EKLEME/GÜNCELLEME KONTROLÜ
       const { id, _id, amount, type, date, description, categoryId } = req.body;
       const targetId = id || _id;
       
       if (targetId) {
-        // EĞER ID VARSA: GÜNCELLE (Düzenleme İşlemi)
         const updatedTrans = await Transaction.findOneAndUpdate(
-          { _id: targetId, workspaceId: userContext.workspaceId }, // Sadece kendi workspace'indeki kaydı güncelleyebilir
+          { _id: targetId, workspaceId: userContext.workspaceId },
           { amount, type, date, description, categoryId },
           { new: true }
         );
         return res.status(200).json(updatedTrans);
       } else {
-        // EĞER ID YOKSA: YENİ KAYIT EKLE
         const newTrans = await Transaction.create({
           amount, type, date, description, categoryId,
           workspaceId: userContext.workspaceId,

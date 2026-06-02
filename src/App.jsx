@@ -418,7 +418,160 @@ export default function App() {
   const [selectedYear, setSelectedYear] = useState(String(currentYear));
 
   // Form States
-  // Form States bölümüne ekleyin
+  // --- YENİ EKLENEN: IMPORT MODAL STATES ---
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
+  // 1. Şablon İndirme Fonksiyonu
+  const handleDownloadTemplate = () => {
+    // Sütun Başlıkları
+    let csvContent = "KATEGORI_ID;TARIH(YYYY-MM-DD);TUTAR;ACIKLAMA\n";
+    csvContent +=
+      "Ornek_Kategori_ID;2026-06-15;1500.50;İsteğe Bağlı Açıklama\n";
+    csvContent += "\n"; // Boşluk
+    csvContent +=
+      "--- KATEGORI REFERANS LİSTESİ (ID'leri Buradan Kopyalayın) ---\n";
+    csvContent += "KATEGORI_ADI;KATEGORI_ID;TUR\n";
+
+    // Kullanıcının görebileceği kategorileri listeye ekle
+    categories.forEach((c) => {
+      csvContent += `${c.name};${c._id || c.id};${c.type}\n`;
+    });
+
+    const bom = "\uFEFF";
+    const blob = new Blob([bom + csvContent], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "Finans_Iceri_Aktarma_Sablonu.csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // 2. Dosya Yükleme ve Doğrulama Fonksiyonu
+  const handleImportCSV = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const text = event.target.result;
+      const lines = text
+        .split("\n")
+        .map((l) => l.trim())
+        .filter((l) => l);
+
+      let isDataSection = true;
+      const parsedData = [];
+      const localDuplicates = new Set();
+      let errorMsg = "";
+
+      // İlk satır başlık olduğu için i=1'den başlıyoruz
+      for (let i = 1; i < lines.length; i++) {
+        if (lines[i].startsWith("---")) {
+          isDataSection = false; // Referans bölümüne geldik, okumayı bırak
+          continue;
+        }
+        if (!isDataSection) continue;
+
+        const [catId, date, amount, desc] = lines[i].split(";");
+
+        // 1. Zorunlu Alan Kontrolü
+        if (!catId || !date || !amount) {
+          errorMsg = `Satır ${i + 1}: Kategori ID, Tarih ve Tutar alanları zorunludur!`;
+          break;
+        }
+
+        // 2. Geçerli Kategori Kontrolü
+        const category = categories.find(
+          (c) => String(c._id || c.id) === String(catId),
+        );
+        if (!category) {
+          errorMsg = `Satır ${i + 1}: Geçersiz Kategori ID'si kullandınız. Referans listesinden ID'yi kopyaladığınıza emin olun.`;
+          break;
+        }
+
+        // 3. Aynı Ay/Aynı Kategori Kontrolü (Veritabanı + Dosya İçi)
+        const yearMonth = date.substring(0, 7); // Örn: 2026-06
+        const uniqueKey = `${catId}-${yearMonth}`;
+
+        // A) Yüklenen dosyanın kendi içindeki satırlarda kopya var mı?
+        if (localDuplicates.has(uniqueKey)) {
+          errorMsg = `Satır ${i + 1}: Yüklediğiniz dosyanın içinde ${yearMonth} ayı için '${category.name}' kategorisinden birden fazla kayıt var. Lütfen dosyayı düzeltin.`;
+          break;
+        }
+        localDuplicates.add(uniqueKey);
+
+        // B) Sistemde zaten kayıtlı mı?
+        const existsInDb = transactions.some((t) => {
+          const tYearMonth = t.date ? t.date.substring(0, 7) : "";
+          return (
+            String(t.categoryId) === String(catId) && tYearMonth === yearMonth
+          );
+        });
+
+        if (existsInDb) {
+          errorMsg = `Satır ${i + 1}: Sisteminizde ${yearMonth} dönemi için '${category.name}' kategorisinde zaten bir kayıt mevcut!`;
+          break;
+        }
+
+        // Kayıt geçerliyse diziye ekle
+        parsedData.push({
+          categoryId: catId,
+          categoryName: category.name,
+          date: date,
+          amount: parseFloat(amount.replace(",", ".")),
+          description: desc || "",
+          type: category.type,
+        });
+      }
+
+      e.target.value = ""; // İnputu sıfırla ki aynı dosyayı tekrar seçebilsin
+
+      if (errorMsg) {
+        return showAlert(errorMsg);
+      }
+
+      if (parsedData.length === 0) {
+        return showAlert("İçeri aktarılacak geçerli satır bulunamadı.");
+      }
+
+      // Her şey tamamsa backend'e toplu olarak gönder
+      try {
+        const token = localStorage.getItem("app_token");
+        const response = await fetch("/api/transaction", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(parsedData), // Diziyi yolla
+        });
+
+        if (response.ok) {
+          const savedTransactions = await response.json();
+          // Ekrana geri ekleyebilmek için isimlendirmeleri düzelt
+          const formattedSaved = savedTransactions.map((st, index) => ({
+            ...st,
+            id: st._id,
+            categoryName: parsedData[index].categoryName,
+          }));
+
+          setTransactions([...transactions, ...formattedSaved]);
+          setIsImportModalOpen(false);
+          showAlert(
+            `${parsedData.length} adet kayıt başarıyla içeri aktarıldı!`,
+          );
+        } else {
+          throw new Error("API Hatası");
+        }
+      } catch (error) {
+        showAlert("Veriler aktarılırken bir hata oluştu.");
+      }
+    };
+    reader.readAsText(file);
+  };
   const [masterCategoryForm, setMasterCategoryForm] = useState({
     id: null,
     name: "",
@@ -2695,6 +2848,13 @@ export default function App() {
                   />{" "}
                   Yeni Kayıt
                 </button>
+                {/* YENİ EKLENEN İÇE AKTAR BUTONU */}
+                <button
+                  onClick={() => setIsImportModalOpen(true)}
+                  className="hidden sm:flex items-center justify-center gap-2 bg-slate-100 text-slate-700 border border-slate-200 px-5 py-2.5 rounded-xl hover:bg-slate-200 transition-colors font-bold shadow-sm"
+                >
+                  <Download size={18} className="rotate-180" /> İçe Aktar
+                </button>
               </div>
             )}
           </div>
@@ -3822,6 +3982,68 @@ export default function App() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* İÇE AKTAR MODAL */}
+      {isImportModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="flex justify-between items-center p-5 border-b border-slate-100 bg-slate-50/50">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <Database size={20} className="text-indigo-600" /> Excel'den
+                Aktar
+              </h2>
+              <button
+                onClick={() => setIsImportModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-sm text-indigo-800">
+                <p className="font-bold mb-2">Nasıl Çalışır?</p>
+                <ul className="list-disc pl-4 space-y-1 font-medium">
+                  <li>Önce size özel hazırlanan CSV şablonunu indirin.</li>
+                  <li>Şablondaki ID'leri kullanarak verilerinizi doldurun.</li>
+                  <li>
+                    Tarih formatı{" "}
+                    <span className="font-black bg-indigo-200 px-1 rounded">
+                      YYYY-MM-DD
+                    </span>{" "}
+                    olmalıdır.
+                  </li>
+                  <li>
+                    Açıklama alanı{" "}
+                    <span className="font-black">isteğe bağlıdır</span>.
+                  </li>
+                </ul>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={handleDownloadTemplate}
+                  className="w-full flex items-center justify-center gap-2 bg-emerald-100 text-emerald-700 px-4 py-3 rounded-xl hover:bg-emerald-200 transition-colors font-bold"
+                >
+                  <Download size={18} /> Şablonu (CSV) İndir
+                </button>
+
+                <div className="relative">
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={handleImportCSV}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <div className="w-full flex flex-col items-center justify-center gap-2 bg-slate-50 border-2 border-dashed border-slate-300 px-4 py-6 rounded-xl text-slate-500 font-bold hover:bg-slate-100 hover:border-indigo-400 transition-all pointer-events-none">
+                    <ArrowUpCircle size={32} className="text-slate-400" />
+                    <span>Doldurduğunuz CSV Dosyasını Seçin</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
