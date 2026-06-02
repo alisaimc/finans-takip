@@ -2283,7 +2283,7 @@ export default function App() {
                   Tüm workspacelere yansıyacak kök veriler.
                 </p>
               </div>
-              {/* Ekleme Formu */}
+              {/* Ekleme / Düzenleme Formu */}
               <form
                 onSubmit={handleMasterCategorySubmit}
                 className="mb-6 space-y-3"
@@ -2299,7 +2299,7 @@ export default function App() {
                         name: e.target.value,
                       })
                     }
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none transition-colors"
                     required
                   />
                 </div>
@@ -2317,12 +2317,30 @@ export default function App() {
                     <option value="GİDER">GİDER</option>
                     <option value="GELİR">GELİR</option>
                   </select>
+
                   <button
                     type="submit"
-                    className="bg-slate-800 hover:bg-slate-700 text-white px-4 rounded-lg font-bold text-sm transition-colors border border-slate-700"
+                    className={`px-4 rounded-lg font-bold text-sm transition-colors ${masterCategoryForm.id ? "bg-indigo-600 hover:bg-indigo-500 text-white" : "bg-slate-800 hover:bg-slate-700 text-white border border-slate-700"}`}
                   >
-                    Ekle
+                    {masterCategoryForm.id ? "Güncelle" : "Ekle"}
                   </button>
+
+                  {/* Eğer düzenleme modundaysa "İptal Et (X)" butonu çıkar */}
+                  {masterCategoryForm.id && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setMasterCategoryForm({
+                          id: null,
+                          name: "",
+                          type: "GİDER",
+                        })
+                      }
+                      className="bg-slate-800 hover:bg-slate-700 text-white px-3 rounded-lg font-bold text-sm transition-colors border border-slate-700 flex items-center justify-center"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
                 </div>
               </form>
 
@@ -2333,23 +2351,36 @@ export default function App() {
                     GELİR KALEMLERİ
                   </h3>
                   <div className="space-y-1.5">
-                    {/* Sadece isGlobal olan GELİR kategorileri */}
                     {categories
                       .filter((c) => c.type === "GELİR" && c.isGlobal)
                       .map((c) => (
                         <div
                           key={c._id || c.id}
-                          className="flex justify-between items-center bg-slate-950 px-3 py-2 rounded-lg border border-slate-800/50"
+                          className="group flex justify-between items-center bg-slate-950 px-3 py-2 rounded-lg border border-slate-800/50 hover:border-slate-700 transition-colors"
                         >
                           <span className="text-xs font-bold text-slate-300">
                             {c.name}
                           </span>
-                          <button
-                            onClick={() => handleDeleteCategory(c._id || c.id)}
-                            className="text-slate-600 hover:text-red-400"
-                          >
-                            <X size={14} />
-                          </button>
+
+                          {/* İkonlar sadece satırın üzerine gelindiğinde (hover) görünür */}
+                          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              type="button"
+                              onClick={() => handleEditMasterCategory(c)}
+                              className="text-slate-500 hover:text-indigo-400 p-1"
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleDeleteCategory(c._id || c.id)
+                              }
+                              className="text-slate-500 hover:text-red-400 p-1"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
                         </div>
                       ))}
                   </div>
@@ -2359,23 +2390,36 @@ export default function App() {
                     GİDER KALEMLERİ
                   </h3>
                   <div className="space-y-1.5">
-                    {/* Sadece isGlobal olan GİDER kategorileri */}
                     {categories
                       .filter((c) => c.type === "GİDER" && c.isGlobal)
                       .map((c) => (
                         <div
                           key={c._id || c.id}
-                          className="flex justify-between items-center bg-slate-950 px-3 py-2 rounded-lg border border-slate-800/50"
+                          className="group flex justify-between items-center bg-slate-950 px-3 py-2 rounded-lg border border-slate-800/50 hover:border-slate-700 transition-colors"
                         >
                           <span className="text-xs font-bold text-slate-300">
                             {c.name}
                           </span>
-                          <button
-                            onClick={() => handleDeleteCategory(c._id || c.id)}
-                            className="text-slate-600 hover:text-red-400"
-                          >
-                            <X size={14} />
-                          </button>
+
+                          {/* İkonlar sadece satırın üzerine gelindiğinde (hover) görünür */}
+                          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              type="button"
+                              onClick={() => handleEditMasterCategory(c)}
+                              className="text-slate-500 hover:text-indigo-400 p-1"
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleDeleteCategory(c._id || c.id)
+                              }
+                              className="text-slate-500 hover:text-red-400 p-1"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
                         </div>
                       ))}
                   </div>
