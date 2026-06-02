@@ -497,6 +497,26 @@ export default function App() {
   });
 
   // Auth States
+  const [welcomeData, setWelcomeData] = useState({
+    show: false,
+    workspaceName: "",
+  });
+
+  // Konfeti parçacıklarını sadece ekran açıldığında bir kez rastgele üretmek için:
+  const confettiPieces = useMemo(() => {
+    if (!welcomeData.show) return [];
+    return Array.from({ length: 100 }).map((_, i) => ({
+      id: i,
+      left: Math.random() * 100 + "%",
+      width: Math.random() * 8 + 6 + "px",
+      height: Math.random() * 12 + 8 + "px",
+      bg: ["#f43f5e", "#8b5cf6", "#3b82f6", "#10b981", "#f59e0b", "#eab308"][
+        Math.floor(Math.random() * 6)
+      ],
+      dur: Math.random() * 2.5 + 1.5,
+      del: Math.random() * 0.5,
+    }));
+  }, [welcomeData.show]);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoginView, setIsLoginView] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
@@ -1169,7 +1189,26 @@ export default function App() {
       fetchUsers();
 
       setRegisterStep(1);
-      showAlert(`Harika! '${wsName}' çalışma alanı kuruldu ve giriş yapıldı.`);
+      // 3. SİSTEME GİRİŞ YAP VE RAM'İ TEMİZLE
+      setTransactions([]);
+      setCategories([]);
+      setAppUsers([]);
+
+      localStorage.setItem("app_currentUser_v2", JSON.stringify(sessionUser));
+      localStorage.setItem("app_token", token);
+      setCurrentUser(sessionUser);
+      fetchUsers();
+
+      setRegisterStep(1);
+
+      // ESKİ KOD: showAlert(`Harika! '${wsName}' çalışma alanı kuruldu ve giriş yapıldı.`);
+      // YENİ KOD: Karşılama ekranını tetikle
+      setWelcomeData({ show: true, workspaceName: wsName });
+
+      // 4.5 saniye sonra ekranı otomatik kapat
+      setTimeout(() => {
+        setWelcomeData({ show: false, workspaceName: "" });
+      }, 4500);
     } catch (error) {
       showAlert("Kurulum sırasında hata oluştu: " + error.message);
     } finally {
@@ -3785,6 +3824,68 @@ export default function App() {
                 Tamam
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* CUSTOM DIALOG (Zaten kodunuzda var, onun altına ekleyin) */}
+      {dialog.isOpen && (
+        // ... (mevcut dialog kodunuz)
+      )}
+
+      {/* --- YENİ EKLENEN: HOŞ GELDİN & KONFETİ ANİMASYONU --- */}
+      {welcomeData.show && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-slate-950/90 backdrop-blur-md animate-[fadeIn_0.5s_ease-out]">
+          <style>{`
+            @keyframes welcome-pop {
+              0% { transform: scale(0.5); opacity: 0; }
+              50% { transform: scale(1.1); opacity: 1; }
+              100% { transform: scale(1); opacity: 1; }
+            }
+            @keyframes confetti-fall {
+              0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+              100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+            }
+            .animate-welcome-pop { animation: welcome-pop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+            @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+          `}</style>
+          
+          {/* Konfeti Yağmuru */}
+          {confettiPieces.map((c) => (
+            <div
+              key={c.id}
+              className="absolute top-[-5%]"
+              style={{
+                left: c.left,
+                width: c.width,
+                height: c.height,
+                backgroundColor: c.bg,
+                borderRadius: Math.random() > 0.5 ? "50%" : "2px",
+                animation: `confetti-fall ${c.dur}s cubic-bezier(.37,0,.63,1) forwards`,
+                animationDelay: `${c.del}s`,
+              }}
+            />
+          ))}
+
+          {/* Merkezdeki Pop-up Kart */}
+          <div className="animate-welcome-pop flex flex-col items-center justify-center text-center px-4 relative z-10">
+            <div className="w-28 h-28 mb-8 bg-gradient-to-br from-violet-500 to-fuchsia-600 rounded-full flex items-center justify-center shadow-[0_0_60px_-10px_rgba(167,139,250,0.6)] relative">
+              <div className="absolute inset-0 rounded-full animate-ping bg-violet-400 opacity-30 duration-1000"></div>
+              <span className="text-5xl drop-shadow-md">🚀</span>
+            </div>
+            
+            <h1 className="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-fuchsia-400 to-indigo-400 mb-4 drop-shadow-xl tracking-tight">
+              Hoş Geldin!
+            </h1>
+            
+            <div className="bg-white/10 border border-white/20 backdrop-blur-sm px-8 py-3 rounded-2xl mt-2 shadow-xl">
+              <p className="text-2xl md:text-3xl font-black text-white tracking-wide">
+                {welcomeData.workspaceName}
+              </p>
+            </div>
+            
+            <p className="text-slate-300 font-medium text-lg mt-6 animate-pulse">
+              Çalışma alanın başarıyla kuruldu...
+            </p>
           </div>
         </div>
       )}
