@@ -16,46 +16,69 @@ export default async function handler(req, res) {
     const userContext = authenticate(req);
 
     // 1. KATEGORİLERİ GETİR
-if (req.method === 'GET') {
-  // Hem bu workspace'e ait olanları, hem de global (herkese açık) olanları getir
-  const categories = await Category.find({
-    $or: [
-      { workspaceId: userContext.workspaceId },
-      { isGlobal: true }
-    ]
-  });
-  return res.status(200).json(categories);
-}
+    if (req.method === 'GET') {
+      const categories = await Category.find({
+        $or: [
+          { workspaceId: userContext.workspaceId },
+          { isGlobal: true }
+        ]
+      });
+      return res.status(200).json(categories);
+    }
 
     // 2. KATEGORİ EKLE VEYA GÜNCELLE
     if (req.method === 'POST') {
-      const { id, _id, name, type } = req.body;
+      const { id, _id, name, type, isGlobal } = req.body;
       const targetId = id || _id;
 
       if (targetId) {
-        // ID varsa: GÜNCELLEME İŞLEMİ
+        // GÜNCELLEME İŞLEMİ (Eğer global kategori güncelleniyorsa admin rolü kontrol edilir)
+        const query = isGlobal && userContext.role === 'admin'
+          ? { _id: targetId }
+          : { _id: targetId, workspaceId: userContext.workspaceId };
+
         const updatedCategory = await Category.findOneAndUpdate(
-          { _id: targetId, workspaceId: userContext.workspaceId },
+          query,
           { name, type },
           { new: true }
         );
         return res.status(200).json(updatedCategory);
       } else {
-        // ID yoksa: YENİ EKLE
-        const newCategory = await Category.create({
-          name,
-          type,
-          workspaceId: userContext.workspaceId
-        });
-        return res.status(201).json(newCategory);
+        // YENİ EKLE
+        if (isGlobal && userContext.role === 'admin') {
+          // Master Kategori Ekleme
+          const newCategory = await Category.create({ name, type, isGlobal: true });
+          return res.status(201).json(newCategory);
+        } else {
+          // Normal Kategori Ekleme
+          const newCategory = await Category.create({
+            name,
+            type,
+            workspaceId: userContext.workspaceId,
+            isGlobal: false
+          });
+          return res.status(201).json(newCategory);
+        }
       }
     }
 
     // 3. KATEGORİ SİL
     if (req.method === 'DELETE') {
-      // Sadece senin workspace'indeki kategoriler silinebilir (Güvenlik!)
-      await Category.findOneAndDelete({ _id: req.query.id, workspaceId: userContext.workspaceId });
-      return res.status(200).json({ message: "Silindi" });
+      const category = await Category.findById(req.query.id);
+      if (!category) return res.status(404).json({ error: "Bulunamadı" });
+
+      if (category.isGlobal) {
+        // Global kategori silme işlemi sadece adminler içindir
+        if (userContext.role !== 'admin') return res.status(403).json({ error: "Yetkisiz işlem" });
+        await Category.findByIdAndDelete(req.query.id);
+      } else {
+        // Normal kategori kendi workspace'i içindeyse silinir
+        if (String(category.workspaceId) !== String(userContext.workspaceId)) {
+          return res.status(403).json({ error: "Yetkisiz işlem" });
+        }
+        await Category.findByIdAndDelete(req.query.id);
+      }
+      return res.status(200).json({ message: "Başarıyla silindi" });
     }
 
     return res.status(405).json({ message: "Geçersiz metod" });

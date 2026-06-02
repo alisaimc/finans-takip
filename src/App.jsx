@@ -416,7 +416,48 @@ export default function App() {
   const [selectedYear, setSelectedYear] = useState(String(currentYear));
 
   // Form States
+  // Form States bölümüne ekleyin
+  const [masterCategoryForm, setMasterCategoryForm] = useState({
+    name: "",
+    type: "GİDER",
+  });
 
+  // Master Kategori Submit Fonksiyonu
+  const handleMasterCategorySubmit = async (e) => {
+    e.preventDefault();
+    if (!masterCategoryForm.name.trim()) return;
+
+    const payload = {
+      ...masterCategoryForm,
+      name: masterCategoryForm.name.toLocaleUpperCase("tr-TR"),
+      isGlobal: true, // Bu parametre backend tarafından algılanacak
+    };
+
+    try {
+      const token = localStorage.getItem("app_token");
+      const response = await fetch("/api/category", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        const addedCategory = await response.json();
+        addedCategory.id = addedCategory._id;
+
+        setCategories([...categories, addedCategory]);
+        setMasterCategoryForm({ name: "", type: "GİDER" });
+        showAlert("Master Kategori başarıyla eklendi!");
+      } else {
+        throw new Error("API Hatası");
+      }
+    } catch (error) {
+      showAlert("Master Kategori işlemi sırasında hata oluştu.");
+    }
+  };
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formData, setFormData] = useState({
     id: null,
@@ -2220,22 +2261,44 @@ export default function App() {
                   Tüm workspacelere yansıyacak kök veriler.
                 </p>
               </div>
-
               {/* Ekleme Formu */}
-              <form className="mb-6 space-y-3">
+              <form
+                onSubmit={handleMasterCategorySubmit}
+                className="mb-6 space-y-3"
+              >
                 <div>
                   <input
                     type="text"
                     placeholder="Kategori Adı"
+                    value={masterCategoryForm.name}
+                    onChange={(e) =>
+                      setMasterCategoryForm({
+                        ...masterCategoryForm,
+                        name: e.target.value,
+                      })
+                    }
                     className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:border-indigo-500 outline-none"
+                    required
                   />
                 </div>
                 <div className="flex gap-3">
-                  <select className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white outline-none">
-                    <option>GİDER</option>
-                    <option>GELİR</option>
+                  <select
+                    value={masterCategoryForm.type}
+                    onChange={(e) =>
+                      setMasterCategoryForm({
+                        ...masterCategoryForm,
+                        type: e.target.value,
+                      })
+                    }
+                    className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white outline-none"
+                  >
+                    <option value="GİDER">GİDER</option>
+                    <option value="GELİR">GELİR</option>
                   </select>
-                  <button className="bg-slate-800 hover:bg-slate-700 text-white px-4 rounded-lg font-bold text-sm transition-colors border border-slate-700">
+                  <button
+                    type="submit"
+                    className="bg-slate-800 hover:bg-slate-700 text-white px-4 rounded-lg font-bold text-sm transition-colors border border-slate-700"
+                  >
                     Ekle
                   </button>
                 </div>
@@ -2248,8 +2311,9 @@ export default function App() {
                     GELİR KALEMLERİ
                   </h3>
                   <div className="space-y-1.5">
+                    {/* Sadece isGlobal olan GELİR kategorileri */}
                     {categories
-                      .filter((c) => c.type === "GELİR")
+                      .filter((c) => c.type === "GELİR" && c.isGlobal)
                       .map((c) => (
                         <div
                           key={c._id || c.id}
@@ -2273,8 +2337,9 @@ export default function App() {
                     GİDER KALEMLERİ
                   </h3>
                   <div className="space-y-1.5">
+                    {/* Sadece isGlobal olan GİDER kategorileri */}
                     {categories
-                      .filter((c) => c.type === "GİDER")
+                      .filter((c) => c.type === "GİDER" && c.isGlobal)
                       .map((c) => (
                         <div
                           key={c._id || c.id}
