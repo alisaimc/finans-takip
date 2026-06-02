@@ -3931,6 +3931,8 @@ export default function App() {
                 src="/intro.mp4"
                 autoPlay
                 controls
+                playsInline
+                muted /* MOBİLDE ÇALIŞMASI İÇİN BU ŞART */
                 className="w-full h-full object-cover"
                 onEnded={() =>
                   setWelcomeData({ show: false, workspaceName: "" })
