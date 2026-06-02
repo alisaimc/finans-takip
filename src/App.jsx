@@ -26,6 +26,8 @@ import {
   Globe,
   Layers,
   Database,
+  ArrowRight,
+  PlayCircle,
 } from "lucide-react";
 import {
   BarChart,
@@ -1206,9 +1208,6 @@ export default function App() {
       setWelcomeData({ show: true, workspaceName: wsName });
 
       // 4.5 saniye sonra ekranı otomatik kapat
-      setTimeout(() => {
-        setWelcomeData({ show: false, workspaceName: "" });
-      }, 4500);
     } catch (error) {
       showAlert("Kurulum sırasında hata oluştu: " + error.message);
     } finally {
@@ -3856,58 +3855,93 @@ export default function App() {
       )}
 
       {/* --- YENİ EKLENEN: HOŞ GELDİN & KONFETİ ANİMASYONU --- */}
+      {/* --- YENİ EKLENEN: SİNEMATİK VİDEO & KONFETİ ANİMASYONU --- */}
       {welcomeData.show && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-slate-950/90 backdrop-blur-md animate-[fadeIn_0.5s_ease-out]">
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden bg-slate-950/95 backdrop-blur-xl animate-[fadeIn_0.5s_ease-out]">
           <style>{`
-            @keyframes welcome-pop {
-              0% { transform: scale(0.5); opacity: 0; }
-              50% { transform: scale(1.1); opacity: 1; }
-              100% { transform: scale(1); opacity: 1; }
-            }
             @keyframes confetti-fall {
               0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
               100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
             }
-            .animate-welcome-pop { animation: welcome-pop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+            @keyframes slide-down {
+              from { transform: translateY(-20px); opacity: 0; }
+              to { transform: translateY(0); opacity: 1; }
+            }
+            @keyframes scale-up {
+              from { transform: scale(0.95); opacity: 0; }
+              to { transform: scale(1); opacity: 1; }
+            }
             @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
           `}</style>
 
-          {/* Konfeti Yağmuru */}
-          {confettiPieces.map((c) => (
-            <div
-              key={c.id}
-              className="absolute top-[-5%]"
-              style={{
-                left: c.left,
-                width: c.width,
-                height: c.height,
-                backgroundColor: c.bg,
-                borderRadius: Math.random() > 0.5 ? "50%" : "2px",
-                animation: `confetti-fall ${c.dur}s cubic-bezier(.37,0,.63,1) forwards`,
-                animationDelay: `${c.del}s`,
-              }}
-            />
-          ))}
+          {/* Konfeti Yağmuru (Sadece Arka Planda Düşecek) */}
+          <div className="absolute inset-0 pointer-events-none opacity-60">
+            {confettiPieces.map((c) => (
+              <div
+                key={c.id}
+                className="absolute top-[-5%]"
+                style={{
+                  left: c.left,
+                  width: c.width,
+                  height: c.height,
+                  backgroundColor: c.bg,
+                  borderRadius: Math.random() > 0.5 ? "50%" : "2px",
+                  animation: `confetti-fall ${c.dur}s cubic-bezier(.37,0,.63,1) forwards`,
+                  animationDelay: `${c.del}s`,
+                }}
+              />
+            ))}
+          </div>
 
-          {/* Merkezdeki Pop-up Kart */}
-          <div className="animate-welcome-pop flex flex-col items-center justify-center text-center px-4 relative z-10">
-            <div className="w-28 h-28 mb-8 bg-gradient-to-br from-violet-500 to-fuchsia-600 rounded-full flex items-center justify-center shadow-[0_0_60px_-10px_rgba(167,139,250,0.6)] relative">
-              <div className="absolute inset-0 rounded-full animate-ping bg-violet-400 opacity-30 duration-1000"></div>
-              <span className="text-5xl drop-shadow-md">🚀</span>
-            </div>
+          {/* SAĞ ÜST: GEÇ (SKIP) BUTONU */}
+          <div className="absolute top-6 right-6 z-50 animate-[slide-down_0.5s_ease-out_0.5s_both]">
+            <button
+              onClick={() => setWelcomeData({ show: false, workspaceName: "" })}
+              className="group flex items-center gap-2 px-6 py-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold border border-white/20 backdrop-blur-md transition-all shadow-lg hover:shadow-white/10"
+            >
+              Uygulamaya Geç
+              <ArrowRight
+                size={18}
+                className="group-hover:translate-x-1 transition-transform"
+              />
+            </button>
+          </div>
 
-            <h1 className="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-fuchsia-400 to-indigo-400 mb-4 drop-shadow-xl tracking-tight">
-              Hoş Geldin!
-            </h1>
-
-            <div className="bg-white/10 border border-white/20 backdrop-blur-sm px-8 py-3 rounded-2xl mt-2 shadow-xl">
-              <p className="text-2xl md:text-3xl font-black text-white tracking-wide">
-                {welcomeData.workspaceName}
+          {/* MERKEZ: İÇERİK VE VİDEO */}
+          <div className="relative z-10 flex flex-col items-center max-w-5xl w-full px-6 animate-[scale-up_0.6s_ease-out_0.2s_both]">
+            <div className="flex flex-col items-center mb-6 text-center">
+              <div className="w-16 h-16 mb-4 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/30 transform rotate-3">
+                <PlayCircle size={32} className="text-white" />
+              </div>
+              <h1 className="text-3xl md:text-5xl font-black text-white mb-2 tracking-tight">
+                Hoş Geldin,{" "}
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-indigo-400">
+                  {welcomeData.workspaceName}
+                </span>
+              </h1>
+              <p className="text-slate-400 text-sm md:text-base font-medium max-w-lg">
+                Sistemini kurduk. İlk adımlarını atmadan önce, uygulamanın nasıl
+                çalıştığına dair bu 1 dakikalık kısa rehberi izleyebilirsin.
               </p>
             </div>
 
-            <p className="text-slate-300 font-medium text-lg mt-6 animate-pulse">
-              Çalışma alanın başarıyla kuruldu...
+            {/* VİDEO OYNATICI (SİNEMA EKRANI) */}
+            <div className="w-full aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl shadow-indigo-500/20 border border-slate-800 relative group ring-4 ring-white/5">
+              <video
+                src="/intro.mp4"
+                autoPlay
+                controls
+                className="w-full h-full object-cover"
+                onEnded={() =>
+                  setWelcomeData({ show: false, workspaceName: "" })
+                }
+              >
+                Tarayıcınız video oynatmayı desteklemiyor.
+              </video>
+            </div>
+
+            <p className="text-slate-500 text-xs mt-6 font-medium tracking-wide">
+              Video bittiğinde sistem otomatik olarak açılacaktır.
             </p>
           </div>
         </div>
