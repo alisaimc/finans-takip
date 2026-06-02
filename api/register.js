@@ -1,6 +1,5 @@
 import dbConnect from './db.js';
-import { User, Category,Workspace} from "./models.js";
-
+import { User, Workspace } from "./models.js";
 import bcrypt from 'bcryptjs';
 
 export default async function handler(req, res) {
@@ -9,7 +8,8 @@ export default async function handler(req, res) {
   try {
     await dbConnect();
     const { username, password, workspaceName } = req.body;
-  if (!username || !password) {
+    
+    if (!username || !password) {
       return res.status(400).json({ error: 'Kullanıcı adı ve şifre zorunludur.' });
     }
 
@@ -18,31 +18,26 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Bu kullanıcı adı zaten kullanılıyor.' });
     }
 
-    // YENİ EKLENEN: Eğer kullanıcı isim girdiyse onu kullan, girmediyse eskisini yap
+    // 1. Yeni Workspace Alanını Oluştur
     const newWorkspace = await Workspace.create({ 
       name: workspaceName || `${username.toUpperCase()} Finans Alanı` 
     });
 
+    // 2. Güvenli Şifre Kriptolama
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    // 3. Admin Kullanıcısını Yeni Workspace'e Bağlayarak Oluştur
     await User.create({
       username,
       passwordHash: hashedPassword,
       role: 'admin',
       workspaceId: newWorkspace._id
     });
-    const globalCategories = await Category.find({ isGlobal: true });
 
-if (globalCategories.length > 0) {
-  const userCategories = globalCategories.map(cat => ({
-    name: cat.name,
-    type: cat.type,
-    workspaceId: newWorkspace._id, // Yeni oluşturulan workspace'e kopyala
-    isGlobal: false // Kopyalanan artık o kullanıcıya özel
-  }));
-  await Category.insertMany(userCategories);
-}
+    // MİMARİ GÜNCELLEME: Global kategorileri her yeni kayıt olan kullanıcıya 
+    // tek tek kopyalayan (Category.insertMany) eski seed bloğu tamamen kaldırılmıştır.
+    // Tüm sistem artık ana merkezdeki (isGlobal: true) kategorileri ortak referans kabul eder.
 
     return res.status(201).json({ message: 'Kayıt başarılı! Artık giriş yapabilirsiniz.' });
 

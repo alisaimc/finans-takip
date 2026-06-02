@@ -3030,27 +3030,40 @@ export default function App() {
                           key={c._id || c.id}
                           className="group relative flex items-center gap-1 bg-white border border-slate-200 px-3 py-1.5 rounded-lg text-sm text-slate-700 hover:border-slate-300 shadow-sm transition-all font-medium"
                         >
-                          <span>{c.name}</span>
-                          <div className="hidden group-hover:flex items-center ml-2 border-l border-slate-200 pl-2">
-                            <button
-                              onClick={() => handleEditCategory(c)}
-                              className="text-slate-400 hover:text-indigo-600 p-1"
-                            >
-                              <Edit2 size={14} />
-                            </button>
-                            <button
-                              onClick={() =>
-                                handleDeleteCategory(c._id || c.id)
-                              }
-                              className="text-slate-400 hover:text-red-600 p-1"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
+                          <span className="flex items-center gap-2">
+                            {c.name}
+                            {/* Eğer kategori global ise küçük bir rozet göster */}
+                            {c.isGlobal && (
+                              <span className="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-black tracking-widest">
+                                SİSTEM
+                              </span>
+                            )}
+                          </span>
+
+                          {/* Sadece kullanıcının kendi eklediği kategorilerde butonları göster */}
+                          {!c.isGlobal && (
+                            <div className="hidden group-hover:flex items-center ml-2 border-l border-slate-200 pl-2">
+                              <button
+                                onClick={() => handleEditCategory(c)}
+                                className="text-slate-400 hover:text-indigo-600 p-1"
+                              >
+                                <Edit2 size={14} />
+                              </button>
+                              <button
+                                onClick={() =>
+                                  handleDeleteCategory(c._id || c.id)
+                                }
+                                className="text-slate-400 hover:text-red-600 p-1"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          )}
                         </div>
                       ))}
                   </div>
                 </div>
+
                 <div className="pt-4">
                   <h3 className="text-sm font-bold text-green-600 mb-3 tracking-wider border-b border-slate-100 pb-2">
                     GELİR KATEGORİLERİ
@@ -3063,23 +3076,35 @@ export default function App() {
                           key={c._id || c.id}
                           className="group relative flex items-center gap-1 bg-white border border-slate-200 px-3 py-1.5 rounded-lg text-sm text-slate-700 hover:border-slate-300 shadow-sm transition-all font-medium"
                         >
-                          <span>{c.name}</span>
-                          <div className="hidden group-hover:flex items-center ml-2 border-l border-slate-200 pl-2">
-                            <button
-                              onClick={() => handleEditCategory(c)}
-                              className="text-slate-400 hover:text-indigo-600 p-1"
-                            >
-                              <Edit2 size={14} />
-                            </button>
-                            <button
-                              onClick={() =>
-                                handleDeleteCategory(c._id || c.id)
-                              }
-                              className="text-slate-400 hover:text-red-600 p-1"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
+                          <span className="flex items-center gap-2">
+                            {c.name}
+                            {/* Eğer kategori global ise küçük bir rozet göster */}
+                            {c.isGlobal && (
+                              <span className="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-black tracking-widest">
+                                SİSTEM
+                              </span>
+                            )}
+                          </span>
+
+                          {/* Sadece kullanıcının kendi eklediği kategorilerde butonları göster */}
+                          {!c.isGlobal && (
+                            <div className="hidden group-hover:flex items-center ml-2 border-l border-slate-200 pl-2">
+                              <button
+                                onClick={() => handleEditCategory(c)}
+                                className="text-slate-400 hover:text-indigo-600 p-1"
+                              >
+                                <Edit2 size={14} />
+                              </button>
+                              <button
+                                onClick={() =>
+                                  handleDeleteCategory(c._id || c.id)
+                                }
+                                className="text-slate-400 hover:text-red-600 p-1"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          )}
                         </div>
                       ))}
                   </div>
