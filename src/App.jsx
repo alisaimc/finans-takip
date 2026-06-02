@@ -1758,7 +1758,6 @@ export default function App() {
                     required
                     className="w-full pl-12 pr-4 py-4 rounded-2xl border-0 ring-1 ring-slate-200 !bg-slate-50 focus:!bg-white focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-800"
                     placeholder="Kullanıcı Adı"
-                    defaultValue="admin"
                   />
                 </div>
                 <div className="relative group">
@@ -1771,7 +1770,6 @@ export default function App() {
                     required
                     className="w-full pl-12 pr-12 py-4 rounded-2xl border-0 ring-1 ring-slate-200 !bg-slate-50 focus:!bg-white focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-800"
                     placeholder="Şifre"
-                    defaultValue="123"
                   />
                   <button
                     type="button"
@@ -1919,7 +1917,6 @@ export default function App() {
                   required
                   className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-slate-50 focus:bg-white border-0 ring-1 ring-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none transition-all font-bold text-slate-800"
                   placeholder="Kullanıcı Adı"
-                  defaultValue="admin"
                 />
               </div>
               <div className="relative">
@@ -1932,7 +1929,6 @@ export default function App() {
                   required
                   className="w-full pl-12 pr-12 py-3.5 rounded-xl bg-slate-50 focus:bg-white border-0 ring-1 ring-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none transition-all font-bold text-slate-800"
                   placeholder="Şifre"
-                  defaultValue="123"
                 />
                 <button
                   type="button"
