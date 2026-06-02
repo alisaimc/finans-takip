@@ -39,6 +39,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
+import * as XLSX from "xlsx";
 
 // --- SABİTLER ---
 const MONTHS = [
@@ -420,125 +421,134 @@ export default function App() {
   // Form States
   // --- YENİ EKLENEN: IMPORT MODAL STATES ---
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-
-  // 1. Şablon İndirme Fonksiyonu
+  // 1. Şablon İndirme Fonksiyonu (TEK DOSYA, İKİ SAYFA - SHEET)
   const handleDownloadTemplate = () => {
-    // Sütun Başlıkları
-    let csvContent = "KATEGORI_ID;TARIH(YYYY-MM-DD);TUTAR;ACIKLAMA\n";
-    csvContent +=
-      "Ornek_Kategori_ID;2026-06-15;1500.50;İsteğe Bağlı Açıklama\n";
-    csvContent += "\n"; // Boşluk
-    csvContent +=
-      "--- KATEGORI REFERANS LİSTESİ (ID'leri Buradan Kopyalayın) ---\n";
-    csvContent += "KATEGORI_ADI;KATEGORI_ID;TUR\n";
+    // SAYFA 1: VERİ GİRİŞ ALANI
+    const templateData = [
+      ["KATEGORI_ID", "TARIH(YYYY-MM-DD)", "TUTAR", "ACIKLAMA"],
+      [
+        "Örnek_ID_Buraya_Kopyalayin",
+        "2026-06-15",
+        1500.5,
+        "İsteğe Bağlı Açıklama",
+      ],
+    ];
 
-    // Kullanıcının görebileceği kategorileri listeye ekle
+    // SAYFA 2: REFERANS LİSTESİ
+    const referenceData = [["KATEGORI_ADI", "KATEGORI_ID", "TUR"]];
     categories.forEach((c) => {
-      csvContent += `${c.name};${c._id || c.id};${c.type}\n`;
+      referenceData.push([c.name, c._id || c.id, c.type]);
     });
 
-    const bom = "\uFEFF";
-    const blob = new Blob([bom + csvContent], {
-      type: "text/csv;charset=utf-8;",
-    });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "Finans_Iceri_Aktarma_Sablonu.csv";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Yeni bir Excel Çalışma Kitabı oluştur
+    const wb = XLSX.utils.book_new();
+
+    // Verileri sayfalara (Sheet) çevir
+    const wsTemplate = XLSX.utils.aoa_to_sheet(templateData);
+    const wsReference = XLSX.utils.aoa_to_sheet(referenceData);
+
+    // Sütun genişliklerini ayarla (daha şık görünmesi için)
+    wsTemplate["!cols"] = [{ wch: 30 }, { wch: 20 }, { wch: 15 }, { wch: 40 }];
+    wsReference["!cols"] = [{ wch: 25 }, { wch: 30 }, { wch: 15 }];
+
+    // Sayfaları Çalışma Kitabına ekle
+    XLSX.utils.book_append_sheet(wb, wsTemplate, "Veri Girişi");
+    XLSX.utils.book_append_sheet(wb, wsReference, "Kategori ID Listesi");
+
+    // Dosyayı indir
+    XLSX.writeFile(wb, "Finans_Iceri_Aktarma_Sablonu.xlsx");
   };
 
-  // 2. Dosya Yükleme ve Doğrulama Fonksiyonu
-  const handleImportCSV = async (e) => {
+  // 2. Excel Dosyası Yükleme ve Doğrulama Fonksiyonu
+  const handleImportExcel = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
     reader.onload = async (event) => {
-      const text = event.target.result;
-      const lines = text
-        .split("\n")
-        .map((l) => l.trim())
-        .filter((l) => l);
-
-      let isDataSection = true;
-      const parsedData = [];
-      const localDuplicates = new Set();
-      let errorMsg = "";
-
-      // İlk satır başlık olduğu için i=1'den başlıyoruz
-      for (let i = 1; i < lines.length; i++) {
-        if (lines[i].startsWith("---")) {
-          isDataSection = false; // Referans bölümüne geldik, okumayı bırak
-          continue;
-        }
-        if (!isDataSection) continue;
-
-        const [catId, date, amount, desc] = lines[i].split(";");
-
-        // 1. Zorunlu Alan Kontrolü
-        if (!catId || !date || !amount) {
-          errorMsg = `Satır ${i + 1}: Kategori ID, Tarih ve Tutar alanları zorunludur!`;
-          break;
-        }
-
-        // 2. Geçerli Kategori Kontrolü
-        const category = categories.find(
-          (c) => String(c._id || c.id) === String(catId),
-        );
-        if (!category) {
-          errorMsg = `Satır ${i + 1}: Geçersiz Kategori ID'si kullandınız. Referans listesinden ID'yi kopyaladığınıza emin olun.`;
-          break;
-        }
-
-        // 3. Aynı Ay/Aynı Kategori Kontrolü (Veritabanı + Dosya İçi)
-        const yearMonth = date.substring(0, 7); // Örn: 2026-06
-        const uniqueKey = `${catId}-${yearMonth}`;
-
-        // A) Yüklenen dosyanın kendi içindeki satırlarda kopya var mı?
-        if (localDuplicates.has(uniqueKey)) {
-          errorMsg = `Satır ${i + 1}: Yüklediğiniz dosyanın içinde ${yearMonth} ayı için '${category.name}' kategorisinden birden fazla kayıt var. Lütfen dosyayı düzeltin.`;
-          break;
-        }
-        localDuplicates.add(uniqueKey);
-
-        // B) Sistemde zaten kayıtlı mı?
-        const existsInDb = transactions.some((t) => {
-          const tYearMonth = t.date ? t.date.substring(0, 7) : "";
-          return (
-            String(t.categoryId) === String(catId) && tYearMonth === yearMonth
-          );
-        });
-
-        if (existsInDb) {
-          errorMsg = `Satır ${i + 1}: Sisteminizde ${yearMonth} dönemi için '${category.name}' kategorisinde zaten bir kayıt mevcut!`;
-          break;
-        }
-
-        // Kayıt geçerliyse diziye ekle
-        parsedData.push({
-          categoryId: catId,
-          categoryName: category.name,
-          date: date,
-          amount: parseFloat(amount.replace(",", ".")),
-          description: desc || "",
-          type: category.type,
-        });
-      }
-
-      e.target.value = ""; // İnputu sıfırla ki aynı dosyayı tekrar seçebilsin
-
-      if (errorMsg) {
-        return showAlert(errorMsg);
-      }
-
-      if (parsedData.length === 0) {
-        return showAlert("İçeri aktarılacak geçerli satır bulunamadı.");
-      }
-
-      // Her şey tamamsa backend'e toplu olarak gönder
       try {
+        const data = new Uint8Array(event.target.result);
+        const workbook = XLSX.read(data, { type: "array" });
+
+        // Sadece ilk sayfayı (Veri Girişi) oku
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+
+        // Excel sayfasını JSON dizisine çevir
+        const rows = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+        const parsedData = [];
+        const localDuplicates = new Set();
+        let errorMsg = "";
+
+        for (let i = 0; i < rows.length; i++) {
+          const row = rows[i];
+
+          const catId = row["KATEGORI_ID"]?.toString().trim();
+          const date = row["TARIH(YYYY-MM-DD)"]?.toString().trim();
+          const amount = row["TUTAR"];
+          const desc = row["ACIKLAMA"]?.toString().trim();
+
+          // Şablondaki örnek satırı atla
+          if (catId === "Örnek_ID_Buraya_Kopyalayin") continue;
+
+          // Boş satırları atla
+          if (!catId && !date && !amount) continue;
+
+          // 1. Zorunlu Alan Kontrolü
+          if (!catId || !date || amount === "" || amount === undefined) {
+            errorMsg = `Satır ${i + 2}: Kategori ID, Tarih ve Tutar alanları zorunludur!`;
+            break;
+          }
+
+          // 2. Geçerli Kategori Kontrolü
+          const category = categories.find(
+            (c) => String(c._id || c.id) === String(catId),
+          );
+          if (!category) {
+            errorMsg = `Satır ${i + 2}: Geçersiz Kategori ID'si kullandınız. 2. sayfadan (ID Listesi) kopyaladığınıza emin olun.`;
+            break;
+          }
+
+          // 3. Aynı Ay/Aynı Kategori Kontrolü
+          const yearMonth = date.substring(0, 7);
+          const uniqueKey = `${catId}-${yearMonth}`;
+
+          if (localDuplicates.has(uniqueKey)) {
+            errorMsg = `Satır ${i + 2}: Yüklediğiniz dosyanın içinde ${yearMonth} ayı için '${category.name}' kategorisinden birden fazla kayıt var.`;
+            break;
+          }
+          localDuplicates.add(uniqueKey);
+
+          const existsInDb = transactions.some((t) => {
+            const tYearMonth = t.date ? t.date.substring(0, 7) : "";
+            return (
+              String(t.categoryId) === String(catId) && tYearMonth === yearMonth
+            );
+          });
+
+          if (existsInDb) {
+            errorMsg = `Satır ${i + 2}: Sisteminizde ${yearMonth} dönemi için '${category.name}' kategorisinde zaten bir kayıt mevcut!`;
+            break;
+          }
+
+          parsedData.push({
+            categoryId: catId,
+            categoryName: category.name,
+            date: date,
+            amount: parseFloat(amount.toString().replace(",", ".")),
+            description: desc || "",
+            type: category.type,
+          });
+        }
+
+        e.target.value = ""; // İnputu sıfırla
+
+        if (errorMsg) return showAlert(errorMsg);
+        if (parsedData.length === 0)
+          return showAlert("İçeri aktarılacak geçerli veri bulunamadı.");
+
+        // Backend'e gönder
         const token = localStorage.getItem("app_token");
         const response = await fetch("/api/transaction", {
           method: "POST",
@@ -546,12 +556,11 @@ export default function App() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify(parsedData), // Diziyi yolla
+          body: JSON.stringify(parsedData),
         });
 
         if (response.ok) {
           const savedTransactions = await response.json();
-          // Ekrana geri ekleyebilmek için isimlendirmeleri düzelt
           const formattedSaved = savedTransactions.map((st, index) => ({
             ...st,
             id: st._id,
@@ -567,11 +576,13 @@ export default function App() {
           throw new Error("API Hatası");
         }
       } catch (error) {
-        showAlert("Veriler aktarılırken bir hata oluştu.");
+        console.error(error);
+        showAlert("Excel dosyası okunurken bir hata oluştu.");
       }
     };
-    reader.readAsText(file);
+    reader.readAsArrayBuffer(file);
   };
+
   const [masterCategoryForm, setMasterCategoryForm] = useState({
     id: null,
     name: "",
@@ -1872,17 +1883,17 @@ export default function App() {
       ];
     });
 
-    const csvContent = [
+    const excelContent = [
       headers.join(";"),
       ...rows.map((r) => r.join(";")),
     ].join("\n");
     const bom = "\uFEFF";
-    const blob = new Blob([bom + csvContent], {
-      type: "text/csv;charset=utf-8;",
+    const blob = new Blob([bom + excelContent], {
+      type: "text/excel;charset=utf-8;",
     });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `Finans_Kayitlar_${MONTHS.find((m) => m.value === selectedMonth)?.label}_${selectedYear}.csv`;
+    link.download = `Finans_Kayitlar_${MONTHS.find((m) => m.value === selectedMonth)?.label}_${selectedYear}.excel`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -4006,7 +4017,7 @@ export default function App() {
               <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-sm text-indigo-800">
                 <p className="font-bold mb-2">Nasıl Çalışır?</p>
                 <ul className="list-disc pl-4 space-y-1 font-medium">
-                  <li>Önce size özel hazırlanan CSV şablonunu indirin.</li>
+                  <li>Önce size özel hazırlanan excel şablonunu indirin.</li>
                   <li>Şablondaki ID'leri kullanarak verilerinizi doldurun.</li>
                   <li>
                     Tarih formatı{" "}
@@ -4027,19 +4038,19 @@ export default function App() {
                   onClick={handleDownloadTemplate}
                   className="w-full flex items-center justify-center gap-2 bg-emerald-100 text-emerald-700 px-4 py-3 rounded-xl hover:bg-emerald-200 transition-colors font-bold"
                 >
-                  <Download size={18} /> Şablonu (CSV) İndir
+                  <Download size={18} /> Şablonu İndir (Excel)
                 </button>
 
                 <div className="relative">
                   <input
                     type="file"
-                    accept=".csv"
-                    onChange={handleImportCSV}
+                    accept=".xlsx, .xls"
+                    onChange={handleImportExcel}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   />
                   <div className="w-full flex flex-col items-center justify-center gap-2 bg-slate-50 border-2 border-dashed border-slate-300 px-4 py-6 rounded-xl text-slate-500 font-bold hover:bg-slate-100 hover:border-indigo-400 transition-all pointer-events-none">
                     <ArrowUpCircle size={32} className="text-slate-400" />
-                    <span>Doldurduğunuz CSV Dosyasını Seçin</span>
+                    <span>Doldurduğunuz Excel Dosyasını Seçin</span>
                   </div>
                 </div>
               </div>
