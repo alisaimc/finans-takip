@@ -3827,10 +3827,6 @@ export default function App() {
           </div>
         </div>
       )}
-      {/* CUSTOM DIALOG (Zaten kodunuzda var, onun altına ekleyin) */}
-      {dialog.isOpen && (
-        // ... (mevcut dialog kodunuz)
-      )}
 
       {/* --- YENİ EKLENEN: HOŞ GELDİN & KONFETİ ANİMASYONU --- */}
       {welcomeData.show && (
@@ -3848,7 +3844,7 @@ export default function App() {
             .animate-welcome-pop { animation: welcome-pop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
             @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
           `}</style>
-          
+
           {/* Konfeti Yağmuru */}
           {confettiPieces.map((c) => (
             <div
@@ -3872,17 +3868,17 @@ export default function App() {
               <div className="absolute inset-0 rounded-full animate-ping bg-violet-400 opacity-30 duration-1000"></div>
               <span className="text-5xl drop-shadow-md">🚀</span>
             </div>
-            
+
             <h1 className="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-fuchsia-400 to-indigo-400 mb-4 drop-shadow-xl tracking-tight">
               Hoş Geldin!
             </h1>
-            
+
             <div className="bg-white/10 border border-white/20 backdrop-blur-sm px-8 py-3 rounded-2xl mt-2 shadow-xl">
               <p className="text-2xl md:text-3xl font-black text-white tracking-wide">
                 {welcomeData.workspaceName}
               </p>
             </div>
-            
+
             <p className="text-slate-300 font-medium text-lg mt-6 animate-pulse">
               Çalışma alanın başarıyla kuruldu...
             </p>
