@@ -2519,6 +2519,33 @@ export default function App() {
             </div>
           </div>
         )}
+        {/* EKSİK OLAN DIALOG KODUNU BURAYA EKLEYİN */}
+        {dialog.isOpen && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden p-6 text-center">
+              <p className="text-slate-800 font-bold mb-6">{dialog.message}</p>
+              <div className="flex gap-3 justify-center">
+                {dialog.type === "confirm" && (
+                  <button
+                    onClick={closeDialog}
+                    className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition-colors w-full"
+                  >
+                    İptal
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    if (dialog.type === "confirm") dialog.onConfirm();
+                    else closeDialog();
+                  }}
+                  className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition-colors w-full"
+                >
+                  Tamam
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
