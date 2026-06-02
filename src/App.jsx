@@ -418,6 +418,7 @@ export default function App() {
   // Form States
   // Form States bölümüne ekleyin
   const [masterCategoryForm, setMasterCategoryForm] = useState({
+    id: null,
     name: "",
     type: "GİDER",
   });
@@ -428,9 +429,10 @@ export default function App() {
     if (!masterCategoryForm.name.trim()) return;
 
     const payload = {
-      ...masterCategoryForm,
+      id: masterCategoryForm.id, // ID varsa backend bunun güncelleme olduğunu anlayacak
       name: masterCategoryForm.name.toLocaleUpperCase("tr-TR"),
-      isGlobal: true, // Bu parametre backend tarafından algılanacak
+      type: masterCategoryForm.type,
+      isGlobal: true,
     };
 
     try {
@@ -448,15 +450,35 @@ export default function App() {
         const addedCategory = await response.json();
         addedCategory.id = addedCategory._id;
 
-        setCategories([...categories, addedCategory]);
-        setMasterCategoryForm({ name: "", type: "GİDER" });
-        showAlert("Master Kategori başarıyla eklendi!");
+        if (masterCategoryForm.id) {
+          // Güncelleme İşlemi
+          setCategories(
+            categories.map((c) =>
+              (c._id || c.id) === masterCategoryForm.id ? addedCategory : c,
+            ),
+          );
+          showAlert("Master Kategori başarıyla güncellendi!");
+        } else {
+          // Yeni Ekleme İşlemi
+          setCategories([...categories, addedCategory]);
+          showAlert("Master Kategori başarıyla eklendi!");
+        }
+
+        // Formu Sıfırla
+        setMasterCategoryForm({ id: null, name: "", type: "GİDER" });
       } else {
         throw new Error("API Hatası");
       }
     } catch (error) {
       showAlert("Master Kategori işlemi sırasında hata oluştu.");
     }
+  };
+  const handleEditMasterCategory = (category) => {
+    setMasterCategoryForm({
+      id: category._id || category.id,
+      name: category.name,
+      type: category.type,
+    });
   };
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formData, setFormData] = useState({
